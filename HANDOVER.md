@@ -92,16 +92,18 @@ male** cable plug. Pinout from the Expert 1.5K-FA manual rev 3.2 §12.1.
 **Board = VCC-GND YD-ESP32-S3 (N16R8).** Seen from the front with the
 sockets at the top: left USB-C = **COM** (CH343, console), right USB-C =
 **USB** (native, → radio). Power, measured 2026-11-14:
-- The **COM socket does not power the board** (no LEDs with a known-good
-  cable), contrary to the V1.4 schematic. It also needs the board powered
-  from elsewhere to enumerate.
+- The **COM socket has no USB-C CC pull-down resistors**, so a USB-C→USB-C
+  cable from a Mac never gets 5 V (board dark, nothing enumerates). With a
+  **USB-A→USB-C cable** it powers the whole board *and* carries the console
+  (CH343 at `/dev/cu.usbmodem5C371795401`, auto-reset works). Verified
+  2026-11-14: boot log clean, Wi-Fi joins, TCP CAT up.
 - `USB-OTG` is **bridged**, so the board's 5 V rail is on the USB socket's
   VBUS — that is what powers the radio's FT232R side. Consequence: never
   connect the USB socket to a Mac/PC while 5Vin is also fed (two supplies
   tied with no diode). On the bench with the Mac on the USB socket as the
   only supply, it's fine.
-- In service: 5 V into the **5Vin** pin; USB socket → radio; COM → Mac only
-  when a log is wanted.
+- In service: power via the COM socket from a USB-A charger/port (or 5 V
+  into 5Vin); USB socket → radio. COM to the Mac doubles as the log.
 
 RF hardening: shielded enclosure, ferrites on the USB, CAT and power leads.
 The radio runs 100 W with the SPE close by.
@@ -178,7 +180,8 @@ radio → SPE path doesn't need Wi-Fi.
 - [x] ~~SPE CAT output voltage~~ — 5 V TTL (pin 3); divider needed if wired
 - [ ] Choose polled vs listen-only wiring; confirm which query the amp sends (sniff pin 3)
 - [x] ~~How the S3 board enables 5 V on the OTG port's VBUS~~ — `USB-OTG` solder jumper on the back, behind the USB socket; bridged 2026-11-14 (it bypasses the diode between the native port's VBUS and the 5 V rail)
-- [ ] Final power feed: 5 V into the **5Vin** header pin (the COM socket does not power this board — see "Hardware and wiring")
+- [x] ~~Final power feed~~ — COM socket via a USB-A cable (it lacks USB-C CC resistors), or 5 V into 5Vin
+- [ ] MQTT: put the `iot` password in `secrets.h` (boot log shows `rc=5`, not authorised)
 - [ ] Set `OTA_PASS` in `secrets.h` before the box goes into the shack
 - [ ] Optional: small status web page (deferred; MQTT + LED cover it for now)
 
