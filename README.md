@@ -4,7 +4,8 @@ ESP32-S3 CAT bridge: polls the RGO ONE over USB host and feeds Kenwood-format
 frequency to the SPE amp, so the amp follows band changes. Also serves Kenwood
 CAT over TCP for Hamlib / WSJT-X and publishes rig state to MQTT.
 
-**Status:** firmware written and builds; not yet tested on hardware.
+**Status:** running on an S3 N16R8 — Wi-Fi and TCP CAT verified; the radio
+USB link and the SPE output are not yet tested.
 
 ## How it works
 
@@ -66,6 +67,7 @@ src/rig.*               radio task: owns the CAT port, rig state
 src/spe.*               Kenwood emulation to the SPE
 src/tcp_cat.*           Kenwood CAT over TCP
 src/main.cpp            Wi-Fi, MQTT, OTA, status LED
+tools/spe_test.py       bench-test the SPE CAT input from a Mac (sniff / emulate a TS-480)
 flash.sh / monitor.sh   serial-port pickers (never pin the port)
 install.py              toolchain bootstrap, macOS/Pi branch
 ```

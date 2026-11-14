@@ -9,8 +9,11 @@
 
 - **Firmware written and builds** (RAM 15.8 %, flash 17.3 %). All modules are in
   place: FT232R USB host driver, radio poller, SPE output, TCP CAT, MQTT, OTA.
-- **Not yet run on hardware.** Nothing has been flashed; the USB host link and
-  the SPE output are untested on a real S3, radio and amp.
+- **Flashed and running on an S3 N16R8** (MAC `ac:27:6e:a5:97:2c`, 16 MB
+  flash, 8 MB PSRAM). On Wi-Fi at `192.168.30.191` (`rgo-spe-cat.local`); TCP
+  CAT on 4533 answers in ~5 ms (`?;` with no radio attached, as designed).
+- **Not yet tested:** the USB host link to the radio, the SPE output, MQTT
+  (no password in `secrets.h` yet).
 - Radio facts measured on the Mac (see "Radio — measured facts" below).
 - Git: private repo [vu2cpl/rgo-spe-cat](https://github.com/vu2cpl/rgo-spe-cat), branch `master`.
 
@@ -130,6 +133,21 @@ red = no radio on USB · blinking blue = no Wi-Fi.
 
 OTA after first flash: `pio run -t upload --upload-port rgo-spe-cat.local`.
 
+**First flash / no COM port (what worked 2026-11-14):** unplug everything,
+hold BOOT, plug the *native* USB port into the Mac, release BOOT. The board
+appears as `USB JTAG/serial debug unit` (303A:1001). Flash with
+`pio run -t upload --upload-port /dev/cu.usbmodemXXXX`. esptool's RTS reset
+afterwards leaves it in download mode (`boot:0x0 … waiting for download`), so
+finish with a watchdog reset:
+`~/.platformio/penv/bin/python -m esptool --port /dev/cu.usbmodemXXXX --before no-reset --after watchdog-reset chip-id`.
+Once the firmware runs, the native port becomes the USB host and vanishes
+from the Mac.
+
+**Serial console:** only on the COM port (CH343, 1A86:55D3). Its bridge is
+powered from the board, not its own socket, so it only enumerates while the
+board has power from elsewhere — and needs a data-capable cable (a
+charge-only cable left it invisible on 2026-11-14).
+
 ## Wi-Fi onboarding
 
 First boot opens AP **`vu2cpl-rgo-spe-cat-setup`** (password `vu2cpl1234`,
@@ -151,8 +169,9 @@ radio → SPE path doesn't need Wi-Fi.
 
 ## Next steps
 
-1. Flash an S3 and check the USB link on the bench: radio on USB, serial
-   monitor shows `[USB] FTDI ready` and `[RIG] … Hz` lines tracking the VFO.
+1. ~~Flash an S3~~ (done). Check the USB link: power the board from its 5V
+   pin (or COM port), native USB → radio. LED goes green; `FA;` over TCP
+   4533 returns the VFO.
 2. Test TCP CAT with Hamlib (`rigctl -m 2028 -r rgo-spe-cat.local:4533 f`)
    and WSJT-X.
 3. Make the DB15 cable (pins 10, 4, 11→GND, optional 3 via divider), check the
@@ -169,6 +188,12 @@ radio → SPE path doesn't need Wi-Fi.
   radio's DTR/RTS PTT/key setting before probing.
 
 ## What changed
+
+- **2026-11-14** — First flash on a real S3 N16R8: boots, joins Wi-Fi, TCP
+  CAT answers. `platformio.ini` now sets flash size for build and upload
+  plus `maximum_size` (as esp32-vukeyer does). Added `tools/spe_test.py`
+  (sniff / emulate a TS-480 toward the SPE from a Mac). Flashing procedure
+  and COM-port power gotcha documented under "Flash".
 
 - **2026-11-14** — SPE side pinned down from the Expert 1.5K-FA manual rev 3.2:
   DB15 pinout, 5 V TTL Kenwood (KEN TTL to GND), polled vs listen-only
