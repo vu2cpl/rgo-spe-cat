@@ -5,7 +5,7 @@ wiring: [`docs/BOX_PLAN.md`](../docs/BOX_PLAN.md).
 
 ![preview](preview.png)
 
-**Status: draft 3 (2026-11-14), not printed.** Outer size 129 × 79 ×
+**Status: draft 4 (2026-11-14), not printed.** Outer size 121 × 79 ×
 27.8 mm. The base and lid render without errors and all layout checks pass.
 Some sizes are datasheet values or guesses. They are marked `CHECK` in
 `rgo_box.scad`; measure the parts and correct those values before printing.
@@ -21,7 +21,7 @@ right:
 | PWR | S3 COM USB-C | ← USB charger (USB-A → USB-C cable) |
 | IN | CM108 mic jack (1/8") | ← radio RX audio |
 | OUT | CM108 headphone jack (1/8") | → radio TX audio |
-| AMP | DB15 female | → SPE amp (DB15 M–M cable) |
+| AMP | DB9 female | → SPE amp (DB9 male → DB15 male cable, 3 wires; pinout in `docs/BOX_PLAN.md`) |
 | PC | Notch for the dongle's USB extension cable | → PC |
 
 The radio audio cable has a DB15 male plug on ACC1, with the resistors
@@ -36,7 +36,7 @@ box. See `docs/BOX_PLAN.md`.
 - **CM108 dongle:** lies in a cradle with its jack end against the panel. A
   zip tie through the cradle floor holds it. The USB extension socket sits
   behind it on a zip-tie anchor.
-- **DB15 for the amp:** the wall is thinned to 1.6 mm around it, so the jack
+- **DB9 for the amp:** the wall is thinned to 1.6 mm around it, so the jack
   screws reach.
 - **PC cable notch:** a tab on the lid closes it down to cable size, so the
   USB-A plug never has to go through a hole.

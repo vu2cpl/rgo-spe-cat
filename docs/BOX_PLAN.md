@@ -1,6 +1,6 @@
 # Box plan: RGO ONE CAT + audio interface
 
-**Status: enclosure draft 3 (2026-11-14).** The model is
+**Status: enclosure draft 4 (2026-11-14).** The model is
 `enclosure/rgo_box.scad`. It is not printed yet.
 
 **Decided:**
@@ -31,7 +31,7 @@ and no GPIO hack on the CM108.
 | PWR | S3 COM USB-C (same slot) | USB charger (USB-A → USB-C cable) |
 | IN | CM108 mic jack, 1/8" | Radio audio cable, RX plug |
 | OUT | CM108 headphone jack, 1/8" | Radio audio cable, TX plug |
-| AMP | DB15 female, panel mount | SPE CAT: DB15 M–M cable (the amp's socket takes a male plug) |
+| AMP | DB9 female, panel mount | SPE CAT: DB9 male → DB15 male cable (see below) |
 | PC | Cable notch, closed by a tab on the lid | PC (CM108 audio) |
 
 The status LED shows through a window in the lid. Put a ferrite clamp on
@@ -96,7 +96,21 @@ the dongle and the radio, and run WSJT-X.
   - Amp pin 3 → 10 k → GPIO18, with 20 k from GPIO18 to GND.
   - GND → pins 4 and 11.
 
-  These wires now go to the panel DB15 female instead of loose wires.
+  These wires now go to the panel DB9 female instead of loose wires (see
+  the amp cable below).
+
+## Amp cable (DB9 on the box → DB15 on the amp)
+
+The amp needs only 3 wires. The box has a **DB9 female**; the cable is
+**DB9 male → DB15 male** (the amp's socket takes a male plug). Pin 11 (KEN
+TTL select) is joined to pin 4 inside the DB15 hood, so it needs no wire of
+its own.
+
+| Box DB9 pin | Inside the box | Wire | Amp DB15 pin |
+|---|---|---|---|
+| 2 | S3 GPIO17 (TX) | Core 1 | 10 (RX TTL) |
+| 3 | 10 k → GPIO18, 20 k GPIO18 → GND | Core 2 | 3 (TX TTL, 5 V) |
+| 5 | GND | Screen | 4 (GND), and 11 joined to 4 in the hood |
 
 ## Power: USB charger
 
@@ -107,7 +121,7 @@ changes when the PC is off.
 
 ## Enclosure
 
-Draft 3: 129 × 79 × 27.8 mm, OpenSCAD in `enclosure/`, to be printed on the
+Draft 4: 121 × 79 × 27.8 mm, OpenSCAD in `enclosure/`, to be printed on the
 Bambu. `enclosure/README.md` lists the values to measure before printing,
 starting with the dongle's size and jack positions.
 
@@ -125,8 +139,9 @@ lining later.
 
 ## Parts to source
 
-- **Panel connector:** 1 × DB15 female, panel mount (amp side).
-- **Amp cable:** DB15 M–M (box ↔ amp).
+- **Panel connector:** 1 × DB9 female, panel mount (amp side).
+- **Amp cable:** DB9 male plug + DB15 male plug, both with hoods, and about
+  1 m of 2-core screened cable.
 - **Radio audio cable:**
   - 1 × DB15 male plug with hood;
   - two 1/8" (3.5 mm) mono or stereo plugs;

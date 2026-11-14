@@ -13,8 +13,8 @@
 //     │   │  S3  │     [CM108 ]                   │
 //     │   │board │     [dongle]                   │
 //     │ ● └──────┘     [      ]                 ● │
-//     └───USB-C x2─────IN──OUT──────DB15 F───cable─┘
-//        RIG  PWR     1/8" jacks    AMP     PC notch
+//     └───USB-C x2─────IN──OUT─────DB9 F───cable──┘
+//        RIG  PWR     1/8" jacks   AMP     PC notch
 //
 // - S3 board: its two USB-C sockets poke into one slot, so the radio and
 //   charger cables plug straight into the board. It sits on a rib between
@@ -25,8 +25,9 @@
 //   cable (DB15 plug on ACC1, resistors in its hood, two 1/8" plugs) plugs in
 //   there. A zip tie through the cradle holds it. The USB extension socket
 //   sits behind it on a zip-tie anchor.
-// - DB15 female (SPE amp): the wall is thinned around it so the jack screws
-//   reach.
+// - DB9 female (SPE amp): only 3 wires go to the amp, so a DB9 does it; the
+//   amp cable is DB9 male → DB15 male (amp). The wall is thinned around it so
+//   the jack screws reach.
 // - PC cable leaves through a notch at the top of the panel; the lid has a
 //   tab that closes it down to cable size, so the USB-A plug never has to
 //   pass through a hole.
@@ -38,7 +39,7 @@
 part = "assembly";   // [assembly, base, lid, print]
 
 /* [Box] */
-in_l   = 124;   // inner length (X), along the connector panel
+in_l   = 116;   // inner length (X), along the connector panel
 in_d   = 74;    // inner depth (Y)
 in_h   = 23;    // inner height, floor top to lid underside
 wall   = 2.5;
@@ -87,20 +88,20 @@ pad_h       = 4;     // cradle floor the dongle sits on (zip tie runs through it
 rail_t      = 2;     // cradle side rails
 cradle_clear = 0.4;
 
-/* [DB15 (DA-15, shell size A) for the SPE amp] */
-db_hole_pitch = 33.32;   // jack-screw hole spacing (standard)
+/* [DB9 (DE-9, shell size E) for the SPE amp] */
+db_hole_pitch = 24.99;   // jack-screw hole spacing (standard)
 db_hole_d     = 3.2;
-db_cut_top    = 26.4;    // D cutout, wide edge (with clearance)
+db_cut_top    = 19.4;    // D cutout, wide edge (with clearance)
 db_cut_h      = 10.6;
 db_angle      = 10;      // D side angle
-db_flange_w   = 39.1;
+db_flange_w   = 30.8;
 db_flange_h   = 12.6;
 db_panel_t    = 1.6;     // wall thinned to this around the D (jack screws reach)
 db_z          = 9;       // connector centre above the floor top
-db_amp_x      = 87;      // DB15 FEMALE → SPE amp (centre, from inner left wall)
+db_amp_x      = 83;      // DB9 FEMALE → SPE amp (centre, from inner left wall)
 
 /* [PC cable notch, back wall] */
-notch_x = 112;     // notch centre from the inner left wall
+notch_x = 104;     // notch centre from the inner left wall
 notch_w = 6.5;     // CHECK: your USB extension cable diameter + 1
 notch_d = 12;      // notch depth from the top of the wall
 cable_h = 6;       // hole left for the cable once the lid tab is in
@@ -263,18 +264,18 @@ module ghosts() {
     // CM108 dongle in its cradle + the extension socket behind it
     %translate([ix(dongle_x - dongle_w/2), iy(0), floor_t + pad_h]) cube([dongle_w, dongle_l, dongle_h]);
     %translate([ix(dongle_x - 7), iy(dongle_l - 8), floor_t + pad_h]) cube([14, 30, 8]);
-    // DB15 flange outside the panel
+    // DB9 flange outside the panel
     %translate([ix(db_amp_x) - db_flange_w/2, -1, floor_t + db_z - db_flange_h/2]) cube([db_flange_w, 1, db_flange_h]);
 }
 
 echo(str("Outer size: ", out_l, " × ", out_d, " × ", base_h + lid_t, " mm"));
 assert(dongle_x - cradle_w/2 - rail_t >= pcb_x0 + pcb_w + 3, "dongle cradle hits the S3 board");
 assert(dongle_x - cradle_w/2 - rail_t >= pcb_x0 + pcb_w/2 + usbc_slot_w/2 + 3, "jack holes crowd the USB-C slot");
-assert(db_amp_x - db_flange_w/2 >= dongle_x + cradle_w/2 + rail_t + 2, "AMP DB15 hits the dongle cradle");
+assert(db_amp_x - db_flange_w/2 >= dongle_x + cradle_w/2 + rail_t + 2, "AMP DB9 hits the dongle cradle");
 assert(dongle_l + 22 <= in_d, "no room behind the dongle for the extension socket");
-assert(notch_x - notch_w/2 >= db_amp_x + db_flange_w/2 + 2, "cable notch hits the AMP DB15");
+assert(notch_x - notch_w/2 >= db_amp_x + db_flange_w/2 + 2, "cable notch hits the AMP DB9");
 assert(notch_x + notch_w/2 <= in_l - post_d, "cable notch hits a corner post");
-assert(db_z + db_flange_h/2 <= in_h - lip_h, "DB15 hits the lid lip");
+assert(db_z + db_flange_h/2 <= in_h - lip_h, "DB9 hits the lid lip");
 assert(pcb_x0 >= post_d, "board clashes with a corner post");
 
 if (part == "assembly") {
