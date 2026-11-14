@@ -38,7 +38,8 @@
   both pins. The amp polls `IF;` about every 240 ms at 9600; the S3
   answers from the cached radio state.
 - **All parts verified** (radio link, TCP CAT / Hamlib / WSJT-X / PTT, MQTT,
-  SPE). Not yet done: keying into the amp with it in operate.
+  SPE). Keyed up with the amp in operate on 3 bands 2026-11-14 — amp
+  band matched each time. **Ready for service.**
 - Radio facts measured on the Mac (see "Radio — measured facts" below).
 - Git: private repo [vu2cpl/rgo-spe-cat](https://github.com/vu2cpl/rgo-spe-cat), branch `master`.
 
@@ -213,7 +214,7 @@ radio → SPE path doesn't need Wi-Fi.
 - [x] ~~Does the SPE poll or only listen? Baud?~~ — polls in direct Kenwood mode; listen-only also supported. Baud set in SET → CAT, default 9600 (manual rev 3.2)
 - [x] ~~SPE CAT output voltage~~ — 5 V TTL (pin 3); divider needed if wired
 - [x] ~~Choose polled vs listen-only wiring; confirm which query the amp sends~~ — polled; amp sends `IF;` inverted at 9600
-- [ ] Final check with the amp in operate: key up on a few bands and confirm the amp's band matches
+- [x] ~~Final check with the amp in operate~~ — keyed on 3 bands, amp followed (2026-11-14)
 - [x] ~~How the S3 board enables 5 V on the OTG port's VBUS~~ — `USB-OTG` solder jumper on the back, behind the USB socket; bridged 2026-11-14 (it bypasses the diode between the native port's VBUS and the 5 V rail)
 - [x] ~~Final power feed~~ — COM socket via a USB-A cable (it lacks USB-C CC resistors), or 5 V into 5Vin
 - [x] ~~MQTT: put the `iot` password in `secrets.h`~~ — done; broker ACL grant `shack/rgo-spe-cat/#` added 2026-11-14
@@ -228,7 +229,7 @@ radio → SPE path doesn't need Wi-Fi.
    4533 returns the VFO.
 2. ~~Test TCP CAT with Hamlib, WSJT-X and PTT via CAT~~ (done).
 3. ~~Make the DB15 cable and bench test in standby~~ (done — amp follows).
-4. Key up with the amp in operate on a few bands; then box it up.
+4. ~~Key up with the amp in operate on a few bands~~ (done). Box it up.
 
 ## Known gotchas
 
@@ -280,6 +281,9 @@ radio → SPE path doesn't need Wi-Fi.
   radio's DTR/RTS PTT/key setting before probing.
 
 ## What changed
+
+- **2026-11-14** — Operate test: keyed up on 3 bands with the amp in
+  operate; the amp's band matched every time. Project ready for service.
 
 - **2026-11-14** — **SPE amp follows the radio.** The amp ignored the S3
   until the UART was inverted: its TTL CAT idles low. Edge timing on GPIO18

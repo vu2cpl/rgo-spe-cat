@@ -6,7 +6,7 @@ CAT over TCP for Hamlib / WSJT-X and publishes rig state to MQTT.
 
 **Status:** working on an S3 N16R8 — radio USB link, rig polling, Wi-Fi, TCP
 CAT, Hamlib (rigctl), WSJT-X, PTT via CAT, MQTT and the SPE amp following band
-changes are all verified.
+changes (keyed up in operate on 3 bands) are all verified.
 
 ## How it works
 
