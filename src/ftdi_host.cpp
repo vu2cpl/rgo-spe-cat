@@ -55,15 +55,27 @@ TaskHandle_t         g_drvTask;
 // ── callbacks (run in usb_cli) ───────────────────────────
 void clientEvent(const usb_host_client_event_msg_t* msg, void*) {
   if (msg->event == USB_HOST_CLIENT_EVENT_NEW_DEV) {
+    Serial.printf("[USB] new device, addr %u\n", msg->new_dev.address);
     g_newAddr = msg->new_dev.address;
     xTaskNotify(g_drvTask, EV_NEW_DEV, eSetBits);
   } else if (msg->event == USB_HOST_CLIENT_EVENT_DEV_GONE) {
+    Serial.println("[USB] device gone");
     if (msg->dev_gone.dev_hdl == g_dev) {
       g_gone  = true;
       g_ready = false;
       xTaskNotify(g_drvTask, EV_DEV_GONE, eSetBits);
     }
   }
+}
+
+// Called by the enumeration driver once it has read the device descriptor.
+// If this never prints, enumeration is failing before that point.
+bool enumFilter(const usb_device_desc_t* d, uint8_t* bConfigurationValue) {
+  Serial.printf("[USB] enumerating %04x:%04x (bcdUSB %x, %u config(s), EP0 %u)\n",
+                d->idVendor, d->idProduct, d->bcdUSB, d->bNumConfigurations,
+                d->bMaxPacketSize0);
+  *bConfigurationValue = 1;
+  return true;
 }
 
 void ctrlCb(usb_transfer_t*) { xSemaphoreGive(g_ctrlDone); }
@@ -214,12 +226,45 @@ void clientTask(void*) {
   for (;;) usb_host_client_handle_events(g_client, portMAX_DELAY);
 }
 
+// Poll the host library for devices as well as waiting for NEW_DEV events:
+// a device that enumerated before our client registered never gets a
+// NEW_DEV, and the IDF's own logs are compiled out in the Arduino libs
+// (CONFIG_LOG_MAXIMUM_LEVEL = error), so this is also the only way to see
+// whether the stack has enumerated anything at all.
+void scanDevices() {
+  usb_host_lib_info_t info;
+  if (usb_host_lib_info(&info) != ESP_OK) return;
+  uint8_t addrs[8];
+  int n = 0;
+  usb_host_device_addr_list_fill(sizeof(addrs), addrs, &n);
+  static int lastN = -1;
+  if (n != lastN || (!g_dev && n == 0)) {
+    // Raw DWC OTG registers (S3 base 0x60080000) — the IDF logs are
+    // compiled out, so this is how we see what the controller thinks.
+    volatile uint32_t* otg = reinterpret_cast<volatile uint32_t*>(0x60080000);
+    uint32_t gintsts = otg[0x014 / 4];
+    uint32_t hprt    = otg[0x440 / 4];
+    Serial.printf("[USB] scan: %d device(s)%s | mode=%s HPRT=0x%08lx conn=%lu en=%lu pwr=%lu speed=%lu linestate=%lu\n",
+                  n, g_dev ? " (radio open)" : "",
+                  (gintsts & 1) ? "host" : "DEVICE",
+                  (unsigned long)hprt, (unsigned long)(hprt & 1),
+                  (unsigned long)((hprt >> 2) & 1), (unsigned long)((hprt >> 12) & 1),
+                  (unsigned long)((hprt >> 17) & 3), (unsigned long)((hprt >> 10) & 3));
+    lastN = n;
+  }
+  if (!g_dev)
+    for (int i = 0; i < n; i++) openDevice(addrs[i]);
+}
+
 void drvTask(void*) {
   for (;;) {
     uint32_t ev = 0;
-    xTaskNotifyWait(0, UINT32_MAX, &ev, portMAX_DELAY);
-    if (ev & EV_DEV_GONE) closeDevice();
-    if (ev & EV_NEW_DEV)  openDevice(g_newAddr);
+    if (xTaskNotifyWait(0, UINT32_MAX, &ev, pdMS_TO_TICKS(2000)) == pdTRUE) {
+      if (ev & EV_DEV_GONE) closeDevice();
+      if (ev & EV_NEW_DEV)  openDevice(g_newAddr);
+    } else {
+      scanDevices();
+    }
   }
 }
 
@@ -232,10 +277,20 @@ void begin(uint16_t vid, uint16_t pid, uint32_t baud) {
   g_outLock  = xSemaphoreCreateMutex();
   g_rx       = xStreamBufferCreate(1024, 1);
 
+  // Let the IDF USB host stack report enumeration problems (bad cable,
+  // no VBUS, descriptor errors) on the console.
+  esp_log_level_set("USBH", ESP_LOG_DEBUG);
+  esp_log_level_set("ENUM", ESP_LOG_DEBUG);
+  esp_log_level_set("HUB", ESP_LOG_DEBUG);
+  esp_log_level_set("USB HOST", ESP_LOG_DEBUG);
+
   usb_host_config_t hc = {};
   hc.skip_phy_setup = false;
   hc.intr_flags     = ESP_INTR_FLAG_LEVEL1;
-  ESP_ERROR_CHECK(usb_host_install(&hc));
+  hc.enum_filter_cb = enumFilter;
+  esp_err_t err = usb_host_install(&hc);
+  Serial.printf("[USB] host install: %s\n", esp_err_to_name(err));
+  if (err != ESP_OK) return;
   xTaskCreatePinnedToCore(libTask, "usb_lib", 4096, nullptr, 10, nullptr, 0);
 
   usb_host_client_config_t cc = {};
@@ -243,7 +298,10 @@ void begin(uint16_t vid, uint16_t pid, uint32_t baud) {
   cc.max_num_event_msg = 5;
   cc.async.client_event_callback = clientEvent;
   cc.async.callback_arg          = nullptr;
-  ESP_ERROR_CHECK(usb_host_client_register(&cc, &g_client));
+  err = usb_host_client_register(&cc, &g_client);
+  Serial.printf("[USB] client register: %s — waiting for the radio on the USB socket\n",
+                esp_err_to_name(err));
+  if (err != ESP_OK) return;
 
   usb_host_transfer_alloc(sizeof(usb_setup_packet_t) + 64, 0, &g_ctrl);
   usb_host_transfer_alloc(512, 0, &g_in);

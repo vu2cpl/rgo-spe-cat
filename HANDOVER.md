@@ -12,8 +12,11 @@
 - **Flashed and running on an S3 N16R8** (MAC `ac:27:6e:a5:97:2c`, 16 MB
   flash, 8 MB PSRAM). On Wi-Fi at `192.168.30.191` (`rgo-spe-cat.local`); TCP
   CAT on 4533 answers in ~5 ms (`?;` with no radio attached, as designed).
-- **Not yet tested:** the USB host link to the radio, the SPE output, MQTT
-  (no password in `secrets.h` yet).
+- **Radio link verified 2026-11-14:** RGO ONE enumerates (0403:6001), FTDI
+  configured at 19200, `[RIG] 7095250 Hz 40m LSB RX`, LED green. Over TCP
+  4533: `FA;`/`IF;` from cache, `FB;` forwarded live, ~7 ms round trip.
+- **Not yet tested:** the SPE output, MQTT (no password in `secrets.h` yet),
+  Hamlib / WSJT-X.
 - Radio facts measured on the Mac (see "Radio — measured facts" below).
 - Git: private repo [vu2cpl/rgo-spe-cat](https://github.com/vu2cpl/rgo-spe-cat), branch `master`.
 
@@ -203,6 +206,16 @@ radio → SPE path doesn't need Wi-Fi.
 
 ## Known gotchas
 
+- **USB enumeration needs `enum_filter_cb`.** The Arduino libs build the IDF
+  with `CONFIG_USB_HOST_ENABLE_ENUM_FILTER_CALLBACK=1`; with no callback set,
+  enumeration silently stalls after port reset (controller shows conn=1
+  en=1, stack shows 0 devices). `ftdi_host.cpp` sets one that picks config 1
+  and logs the descriptor. Don't remove it.
+- **IDF logs are compiled out** (`CONFIG_LOG_MAXIMUM_LEVEL 1` in the Arduino
+  libs), so USB stack problems are silent. The driver's 2 s scan prints the
+  device count and raw DWC `HPRT` port state when it changes.
+- **RGO ONE answers `MD;` with a bare `MD;`** (no mode digit). Use `IF;` for
+  mode; Hamlib's TS-480 backend mostly does.
 - **Homebrew `pio` fails** with "Python version must be 3.10+" (it runs on
   Python 3.9). `flash.sh`, `monitor.sh` and `install.py` prefer
   `~/.platformio/penv/bin/pio`, which works.
@@ -211,6 +224,12 @@ radio → SPE path doesn't need Wi-Fi.
   radio's DTR/RTS PTT/key setting before probing.
 
 ## What changed
+
+- **2026-11-14** — **Radio link working.** Root cause of "radio shows PC but
+  S3 sees no device": the IDF enumeration filter (enabled in the Arduino
+  libs) needs a callback. Added it, plus a 2 s device scan with raw port
+  registers and connect/disconnect logging. Spliced USB-C→USB-B cable
+  works; radio enumerates on 4.0 V VBUS from the Mac-powered COM socket.
 
 - **2026-11-14** — Measured VBUS on the USB socket: 4.02 V from the Mac's
   USB-A port, 4.7 V from an external charger. In-service power = charger on
