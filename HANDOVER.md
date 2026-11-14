@@ -12,7 +12,7 @@
 - **Not yet run on hardware.** Nothing has been flashed; the USB host link and
   the SPE output are untested on a real S3, radio and amp.
 - Radio facts measured on the Mac (see "Radio — measured facts" below).
-- Git: local repo, no GitHub remote yet.
+- Git: private repo [vu2cpl/rgo-spe-cat](https://github.com/vu2cpl/rgo-spe-cat), branch `master`.
 
 ## Purpose and scope
 
