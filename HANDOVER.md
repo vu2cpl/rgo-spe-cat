@@ -283,7 +283,8 @@ radio → SPE path doesn't need Wi-Fi.
 ## What changed
 
 - **2026-11-14** — Enclosure draft 6: real dongle sizes (28 × 29 × 11.3 mm
-  body + 14 mm USB-A plug, jacks 16.5 mm apart, mic on the left). Box
+  body + 14 mm USB-A plug, jacks 12.4 mm apart at 6.35 mm up, mic on the
+  left). Box
   107 × 75 × 27.8 mm. Looked at a USB-B panel lead (Pro Signal PSG03801)
   for the PC side: works, but its 37 mm flange and 48 mm A-socket end would
   grow the box to roughly 120 × 85 mm; kept the cable notch for now.

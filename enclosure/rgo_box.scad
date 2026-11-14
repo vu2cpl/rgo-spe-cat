@@ -77,14 +77,15 @@ led_d = 3.2;
 
 /* [USB audio dongle — jacks through the panel] */
 // Measured 2026-11-14 (black aluminium "USB Audio Adapter"): body 28 × 29 ×
-// 11.3 mm + USB-A plug 14 long; jacks 16.5 apart, first 5.5 from the edge;
-// pink mic on the left looking at the jack end.
+// 11.3 mm + USB-A plug 14 long. Jack openings: 16.6 outer-to-outer, 8.2
+// inner-to-inner (→ 12.4 pitch); lower edge 4.6 from the bottom, upper edge
+// 3.2 from the top (→ centre 6.35 up). Pink mic on the left at the jack end.
 dongle_x    = 56.5;  // dongle centre line, from the inner left wall
 dongle_l    = 43;    // length, jack end to the end of its USB plug (29 + 14)
 dongle_w    = 28;    // width
 dongle_h    = 11.3;  // height
-jack_pitch  = 16.5;  // centre-to-centre of its two 1/8" jacks
-jack_z      = 4.6;   // jack centre above the dongle's underside (CHECK: from the sketch)
+jack_pitch  = 12.4;  // centre-to-centre of its two 1/8" jacks
+jack_z      = 6.35;  // jack centre above the dongle's underside
 mic_left    = true;  // mic jack on the LEFT seen from outside the panel
 jack_hole_d = 8;     // fits a 1/8" plug's body through the wall
 pad_h       = 4;     // cradle floor the dongle sits on (zip tie runs through it)

@@ -8,7 +8,7 @@ wiring: [`docs/BOX_PLAN.md`](../docs/BOX_PLAN.md).
 **Status: draft 6 (2026-11-14), not printed.** Outer size 107 × 75 ×
 27.8 mm. The base and lid render without errors and all layout checks pass.
 The dongle is measured (28 × 29 × 11.3 mm body + 14 mm USB plug, jacks
-16.5 mm apart). Other sizes are datasheet values or guesses. They are marked `CHECK` in
+12.4 mm apart, centres 6.35 mm up). Other sizes are datasheet values or guesses. They are marked `CHECK` in
 `rgo_box.scad`; measure the parts and correct those values before printing.
 
 ## Panel
@@ -48,7 +48,6 @@ box. See `docs/BOX_PLAN.md`.
 
 | Parameter | Default | Measure |
 |---|---|---|
-| `jack_z` | 4.6 | Dongle jack centre above its underside (read from a sketch; the 8 mm holes allow ±1 mm) |
 | `pcb_l`, `pcb_w` | 63.5 × 28 | S3 board outline |
 | `pin_clear` | 10 | Floor to board underside. The default assumes wires soldered to the pins. Dupont jumpers on downward pins need about 20 (raise `in_h` too) |
 | `usbc_z_above_pcb` | 1.6 | Height of the USB-C socket centre above the board's top face |

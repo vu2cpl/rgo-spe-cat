@@ -129,8 +129,8 @@ changes when the PC is off.
 Draft 6: 107 × 75 × 27.8 mm, OpenSCAD in `enclosure/`, to be printed on the
 Bambu. `enclosure/README.md` lists the values to measure before printing,
 The dongle (black aluminium "USB Audio Adapter")
-is measured: body 28 × 29 × 11.3 mm plus a 14 mm USB plug, jacks 16.5 mm
-apart, mic (pink) on the left.
+is measured: body 28 × 29 × 11.3 mm plus a 14 mm USB plug, jacks 12.4 mm
+apart (centres), 6.35 mm above its underside, mic (pink) on the left.
 
 If RF gets into the S3 or the audio with the amp keyed, add a copper-tape
 lining later.
