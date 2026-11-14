@@ -1,6 +1,6 @@
 # Box plan — RGO ONE CAT + audio interface
 
-**Status: planning (2026-11-14).** Nothing built yet. Decided: audio inside
+**Status: enclosure drafted (2026-11-14)** — `enclosure/rgo_box.scad`, not printed yet. Decided: audio inside
 the box, simplified (no transformers, no trimpots); USB-charger power;
 3D-printed enclosure; radio ACC1 is female.
 
@@ -82,10 +82,10 @@ box would be dead whenever the PC is off.
 |---|---|
 | **DB15 male** | Radio ACC1 (audio) — a standard DB15 M–F extension cable: male end into the radio's female ACC1, female end onto the box |
 | **DB15 female** | SPE CAT — DB15 M–M cable (the amp's socket takes a male plug) |
-| USB-C (S3 native port, via cut-out or panel extension) | Radio USB-B (CAT) |
-| USB-C (S3 COM port) | Charger (power) |
-| USB cable through a grommet | PC (CM108 audio) |
-| Light pipe / window | S3 RGB status LED |
+| USB-C (S3 native port, through a back-wall slot) | Radio USB-B (CAT) |
+| USB-C (S3 COM port, same slot) | Charger (power) |
+| USB cable through a notch the lid closes | PC (CM108 audio) |
+| Window in the lid | S3 RGB status LED |
 
 The two DB15s are deliberately **opposite genders**, so the radio and amp
 cables can't be swapped by mistake.
@@ -95,7 +95,8 @@ Ferrite clamps on every cable leaving the box (1 kW of RF nearby).
 ## Enclosure — decided: 3D-printed
 
 OpenSCAD in `enclosure/` (same approach as `rx888-case`), printed on the
-Bambu. If RF gets into the S3 or the audio with the amp keyed, add a
+Bambu. **First draft done:** 125 × 105 × 36.8 mm, see `enclosure/README.md`
+for the layout and the values to measure before printing. If RF gets into the S3 or the audio with the amp keyed, add a
 copper-tape lining tied to radio ground later. Needs measured sizes of the
 S3 board, the CM108 dongle (in its shell, with plugs in), the USB extension
 plug and the panel parts before the model is drawn.
@@ -117,6 +118,6 @@ plug and the panel parts before the model is drawn.
 - DB15 M–F extension cable (box ↔ radio) and DB15 M–M cable (box ↔ amp)
 - Resistors: 10 k, 1 k, 1 k (plus a spare 1 µF cap)
 - Two 3.5 mm plugs (or cut from an old headphone cable)
-- Short USB-A extension (dongle → PC) and a grommet
+- Short USB-A extension (dongle → PC)
 - Ferrite clamps (snap-on, mix 31)
-- Standoffs, screws
+- 4 × M3 heat-set inserts, 4 × M3 × 8 flat-head screws, zip ties, foam tape

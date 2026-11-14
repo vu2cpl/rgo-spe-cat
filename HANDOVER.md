@@ -229,7 +229,7 @@ radio → SPE path doesn't need Wi-Fi.
    4533 returns the VFO.
 2. ~~Test TCP CAT with Hamlib, WSJT-X and PTT via CAT~~ (done).
 3. ~~Make the DB15 cable and bench test in standby~~ (done — amp follows).
-4. ~~Key up with the amp in operate on a few bands~~ (done). Box it up.
+4. ~~Key up with the amp in operate on a few bands~~ (done). Box it up — enclosure drafted in `enclosure/`; measure the `CHECK` values, bench-test the audio pad, then print.
 
 ## Known gotchas
 
@@ -282,6 +282,12 @@ radio → SPE path doesn't need Wi-Fi.
 
 ## What changed
 
+- **2026-11-14** — Enclosure first draft: `enclosure/rgo_box.scad` (125 ×
+  105 × 36.8 mm, base + screw-down lid, M3 heat-set inserts). S3 USB-Cs
+  through a back-wall slot, PC cable through a notch the lid closes, both
+  DB15s on the end wall, zip-tie anchors for the dongle, LED window. Not
+  printed: sizes marked `CHECK` need measuring first (see
+  `enclosure/README.md`).
 - **2026-11-14** — Box plan simplified (`docs/BOX_PLAN.md`): audio inside
   the box, DigiRig-style — CM108 dongle kept whole, 3 resistors to ACC1,
   no transformers or trimpots; levels set on the Mac. Charger power,

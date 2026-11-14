@@ -78,6 +78,7 @@ src/main.cpp            Wi-Fi, MQTT, OTA, status LED
 tools/spe_test.py       bench-test the SPE CAT input from a Mac (sniff / emulate a TS-480)
 flash.sh / monitor.sh   serial-port pickers (never pin the port)
 install.py              toolchain bootstrap, macOS/Pi branch
+enclosure/              3D-printed box (OpenSCAD); docs/BOX_PLAN.md has the plan + audio wiring
 ```
 
 See `HANDOVER.md` for the full design, measured radio facts and open items.

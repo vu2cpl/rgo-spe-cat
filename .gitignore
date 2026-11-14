@@ -24,3 +24,4 @@ fp-info-cache
 .history/
 _autosave-*
 tools/__pycache__/
+enclosure/stl/
