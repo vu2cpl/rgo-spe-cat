@@ -27,8 +27,9 @@
 - **MQTT 2026-11-14:** logs in to the broker as `iot` (broker log: `New
   client connected … as rgo-spe-cat (u'iot')`). The broker ACL gained
   `topic write shack/rgo-spe-cat/#` under `user iot` (see
-  `vu2cpl-shack/MQTT_AUTH.md`). Topic flow not yet confirmed from a
-  subscriber.
+  `vu2cpl-shack/MQTT_AUTH.md`). Verified in MQTT Explorer: `status`
+  `{"event":"heartbeat","uptime_s":…,"rssi":-55,"radio":true}` and `rig`
+  `{"ok":true,"freq_hz":7088020,"band":"40m","mode":"LSB","tx":false}`.
 - `OTA_PASS` is set in `secrets.h` (same as the mains monitor), so OTA
   uploads need it; COM flashing doesn't.
 - **Not yet tested:** the SPE output.
@@ -205,7 +206,7 @@ radio → SPE path doesn't need Wi-Fi.
 - [x] ~~How the S3 board enables 5 V on the OTG port's VBUS~~ — `USB-OTG` solder jumper on the back, behind the USB socket; bridged 2026-11-14 (it bypasses the diode between the native port's VBUS and the 5 V rail)
 - [x] ~~Final power feed~~ — COM socket via a USB-A cable (it lacks USB-C CC resistors), or 5 V into 5Vin
 - [x] ~~MQTT: put the `iot` password in `secrets.h`~~ — done; broker ACL grant `shack/rgo-spe-cat/#` added 2026-11-14
-- [ ] Confirm `shack/rgo-spe-cat/status` and `/rig` arrive (MQTT Explorer or Node-RED)
+- [x] ~~Confirm `shack/rgo-spe-cat/status` and `/rig` arrive~~ — seen in MQTT Explorer 2026-11-14
 - [x] ~~Set `OTA_PASS` in `secrets.h`~~ — done 2026-11-14
 - [ ] Optional: small status web page (deferred; MQTT + LED cover it for now)
 
@@ -267,6 +268,7 @@ radio → SPE path doesn't need Wi-Fi.
   `secrets.h`; the broker accepts the login. The broker silently drops
   `iot` publishes outside its ACL, so `topic write shack/rgo-spe-cat/#` was
   added on noderedpi4 and mosquitto reloaded (`vu2cpl-shack` 67e5269).
+  Both topics confirmed in MQTT Explorer.
 
 - **2026-11-14** — **WSJT-X stays connected; Test PTT works.** The radio
   never answers `FW;`; WSJT-X timed out on it and reconnected every ~9 s.
