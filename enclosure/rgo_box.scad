@@ -38,9 +38,9 @@
 part = "assembly";   // [assembly, base, lid, print]
 
 /* [Box] */
-in_l   = 132;   // inner length (X), along the connector panel
-in_d   = 78;    // inner depth (Y)
-in_h   = 32;    // inner height, floor top to lid underside
+in_l   = 124;   // inner length (X), along the connector panel
+in_d   = 74;    // inner depth (Y)
+in_h   = 23;    // inner height, floor top to lid underside
 wall   = 2.5;
 floor_t = 2.4;
 lid_t  = 2.4;
@@ -60,7 +60,7 @@ lip_clear     = 0.3;
 pcb_l     = 63.5;  // CHECK (published size 63.5 × 28)
 pcb_w     = 28;    // CHECK
 pcb_t     = 1.6;
-pcb_x0    = 12;    // board's left edge from the inner left wall
+pcb_x0    = 9;     // board's left edge from the inner left wall
 pin_clear = 10;    // CHECK floor → board underside. Wires soldered to the pins: 8-10.
                    // Dupont jumpers on downward pins need ~20 (and raise in_h).
 rib_w     = 8;     // support rib, between the header rows
@@ -75,7 +75,7 @@ led_y = 12;        // CHECK ... from the board's USB end
 led_d = 3.2;
 
 /* [CM108 dongle — jacks through the panel] */
-dongle_x    = 58;    // dongle centre line, from the inner left wall
+dongle_x    = 53;    // dongle centre line, from the inner left wall
 dongle_l    = 50;    // CHECK length, jack end to the end of its USB plug
 dongle_w    = 20;    // CHECK width
 dongle_h    = 10;    // CHECK height
@@ -96,11 +96,11 @@ db_angle      = 10;      // D side angle
 db_flange_w   = 39.1;
 db_flange_h   = 12.6;
 db_panel_t    = 1.6;     // wall thinned to this around the D (jack screws reach)
-db_z          = 14;      // connector centre above the floor top
-db_amp_x      = 94;      // DB15 FEMALE → SPE amp (centre, from inner left wall)
+db_z          = 9;       // connector centre above the floor top
+db_amp_x      = 87;      // DB15 FEMALE → SPE amp (centre, from inner left wall)
 
 /* [PC cable notch, back wall] */
-notch_x = 119;     // notch centre from the inner left wall
+notch_x = 112;     // notch centre from the inner left wall
 notch_w = 6.5;     // CHECK: your USB extension cable diameter + 1
 notch_d = 12;      // notch depth from the top of the wall
 cable_h = 6;       // hole left for the cable once the lid tab is in
@@ -108,7 +108,7 @@ cable_h = 6;       // hole left for the cable once the lid tab is in
 /* [Zip-tie anchors] */
 // [x, y, angle]: centre of each anchor on the floor; the tie runs across the anchor.
 // Default: one for the USB extension socket, behind the dongle.
-ties = [[58, 66, 0]];
+ties = [[53, 63, 0]];
 tie_slot_w = 4.2;  // zip-tie width + clearance
 tie_slot_h = 1.8;
 tie_block  = [12, 8, 4];   // same height as the dongle cradle floor
@@ -159,10 +159,10 @@ module panel_text(x, z, t, sz = 4) {
 }
 
 module labels() {
-    panel_text(db_amp_x, floor_t + db_z + db_flange_h/2 + 4.5, "AMP");
+    panel_text(db_amp_x, floor_t + db_z + db_flange_h/2 + 4, "AMP", 3.5);
     panel_text(in_jack_x,  jack_zabs + jack_hole_d/2 + 4, "IN", 3.5);
     panel_text(out_jack_x, jack_zabs + jack_hole_d/2 + 4, "OUT", 3.5);
-    panel_text(pcb_x0 + pcb_w/2, usbc_z + usbc_slot_h/2 + 4.5, "RIG    PWR", 3.5);
+    panel_text(pcb_x0 + pcb_w/2, usbc_z - usbc_slot_h/2 - 4, "RIG    PWR", 3.5);
     panel_text(notch_x, base_h - notch_d - 5, "PC");
 }
 

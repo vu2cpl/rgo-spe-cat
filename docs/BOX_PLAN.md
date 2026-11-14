@@ -1,6 +1,6 @@
 # Box plan: RGO ONE CAT + audio interface
 
-**Status: enclosure draft 2 (2026-11-14).** The model is
+**Status: enclosure draft 3 (2026-11-14).** The model is
 `enclosure/rgo_box.scad`. It is not printed yet.
 
 **Decided:**
@@ -107,7 +107,7 @@ changes when the PC is off.
 
 ## Enclosure
 
-Draft 2: 137 × 83 × 36.8 mm, OpenSCAD in `enclosure/`, to be printed on the
+Draft 3: 129 × 79 × 27.8 mm, OpenSCAD in `enclosure/`, to be printed on the
 Bambu. `enclosure/README.md` lists the values to measure before printing,
 starting with the dongle's size and jack positions.
 

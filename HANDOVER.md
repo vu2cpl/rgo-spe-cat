@@ -282,6 +282,9 @@ radio → SPE path doesn't need Wi-Fi.
 
 ## What changed
 
+- **2026-11-14** — Enclosure draft 3: shrunk to 129 × 79 × 27.8 mm (was
+  137 × 83 × 36.8) — lower lid (in_h 23), parts packed closer. The panel
+  DB15's 39 mm flange is now the main thing setting the length.
 - **2026-11-14** — Enclosure draft 2: all connectors on ONE panel (RIG/PWR
   USB-C slot, IN/OUT = the CM108's own 1/8" jacks through the wall, AMP
   DB15 female, PC cable notch). The radio panel DB15 is gone: radio audio is

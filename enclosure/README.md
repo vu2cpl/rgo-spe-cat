@@ -5,8 +5,8 @@ wiring: [`docs/BOX_PLAN.md`](../docs/BOX_PLAN.md).
 
 ![preview](preview.png)
 
-**Status: draft 2 (2026-11-14), not printed.** Outer size 137 × 83 ×
-36.8 mm. The base and lid render without errors and all layout checks pass.
+**Status: draft 3 (2026-11-14), not printed.** Outer size 129 × 79 ×
+27.8 mm. The base and lid render without errors and all layout checks pass.
 Some sizes are datasheet values or guesses. They are marked `CHECK` in
 `rgo_box.scad`; measure the parts and correct those values before printing.
 
