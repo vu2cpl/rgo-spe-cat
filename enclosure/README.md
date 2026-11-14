@@ -50,7 +50,7 @@ box. See `docs/BOX_PLAN.md`.
 | Parameter | Default | Measure |
 |---|---|---|
 | `notch_w` | 6.5 | PC cable diameter + 1 (cable not chosen yet; 6.5 suits a ~5.5 mm USB cable). Only the notch and the lid tab depend on it |
-| `amp_jack_hole_d`, `amp_jack_body` | 6.2, 11 | The AMP jack's thread and body width |
+| `amp_jack_body` | 11 | The AMP jack's body width behind the panel (the 6.2 mm hole is confirmed for its ~5.8 mm thread) |
 | `insert_hole_d` | 4.0 | The bore your M3 heat-set inserts need |
 
 ## Use

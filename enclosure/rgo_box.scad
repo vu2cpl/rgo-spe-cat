@@ -97,7 +97,7 @@ cradle_clear = 0.4;
 
 /* [AMP jack — 2.5 mm TRS, panel mount] */
 amp_jack_x      = 80;    // centre, from the inner left wall
-amp_jack_hole_d = 6.2;   // CHECK your jack's thread (usually M6 for a panel jack)
+amp_jack_hole_d = 6.2;   // jack thread measured ~5.8 mm
 amp_jack_body   = 11;    // CHECK width of the jack body behind the panel
 
 /* [PC cable notch, back wall] */
