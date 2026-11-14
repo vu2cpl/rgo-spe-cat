@@ -27,6 +27,18 @@ void handleCmd(Client& c, const char* cmd) {
     snprintf(reply, sizeof(reply), "FA%011lu;", (unsigned long)s.freqHz);
   } else if (s.valid && !strcmp(cmd, "IF;")) {
     strlcpy(reply, s.ifFrame, sizeof(reply));
+  } else if (s.valid && !strcmp(cmd, "MD;")) {
+    // The RGO ONE answers MD; with a bare "MD;" — take the mode digit
+    // from the cached IF frame (position 27 after "IF").
+    snprintf(reply, sizeof(reply), "MD%c;", s.ifFrame[2 + 27]);
+  } else if (!strcmp(cmd, "PS;")) {
+    // Not supported by the radio; Hamlib probes it on open (1 s timeout x4).
+    strlcpy(reply, s.valid ? "PS1;" : "PS0;", sizeof(reply));
+  } else if (!strcmp(cmd, "AI;")) {
+    strlcpy(reply, "AI0;", sizeof(reply));
+  } else if (!strncmp(cmd, "AI", 2)) {
+    // Absorb AI set commands: AI1/AI2 would make the radio send unsolicited
+    // frames and break the poll. No reply to a set command.
   } else if (!rig::transact(cmd, reply, sizeof(reply))) {
     strlcpy(reply, "?;", sizeof(reply));   // radio not there
   }

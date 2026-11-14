@@ -15,8 +15,10 @@
 - **Radio link verified 2026-11-14:** RGO ONE enumerates (0403:6001), FTDI
   configured at 19200, `[RIG] 7095250 Hz 40m LSB RX`, LED green. Over TCP
   4533: `FA;`/`IF;` from cache, `FB;` forwarded live, ~7 ms round trip.
+- **Hamlib verified 2026-11-14:** `rigctl -m 2028 -r 192.168.30.191:4533`
+  reads freq / mode / VFO / PTT and sets freq; opens in ~3 s with no timeouts.
 - **Not yet tested:** the SPE output, MQTT (no password in `secrets.h` yet),
-  Hamlib / WSJT-X.
+  WSJT-X.
 - Radio facts measured on the Mac (see "Radio — measured facts" below).
 - Git: private repo [vu2cpl/rgo-spe-cat](https://github.com/vu2cpl/rgo-spe-cat), branch `master`.
 
@@ -126,7 +128,7 @@ state. The radio → SPE path starts before Wi-Fi and never depends on it.
 | USB link | `src/ftdi_host.*` | IDF USB host + client + driver tasks. Matches 0403:6001, forces **DTR/RTS low** first, sets 19200 8N1, no flow, 4 ms latency. Strips the 2 FTDI status bytes per IN packet into a stream buffer. Handles hot unplug/replug |
 | Rig state | `src/rig.*` | Radio task: polls `IF;` every 150 ms, parses freq / mode / TX, keeps the raw IF frame. PC commands go through one queue; a set command triggers an immediate re-poll. State goes invalid after 1.5 s without a good reply |
 | SPE output | `src/spe.*` | UART1 Kenwood emulation. Answers `FA;` `IF;` `AI;` `ID;` from cache; pushes `FA…;` on change plus a 2 s keepalive. **Fail-safe:** sends nothing while state is invalid |
-| TCP CAT | `src/tcp_cat.*` | Port 4533, up to 3 clients. `FA;`/`IF;` from cache, everything else forwarded to the radio via the queue; replies `?;` if the radio is absent |
+| TCP CAT | `src/tcp_cat.*` | Port 4533, up to 3 clients. `FA;`/`IF;` from cache. Answered locally for Hamlib: `MD;` (mode digit from the cached IF), `PS;` → `PS1;`, `AI;` → `AI0;`; `AI` set commands are absorbed, never sent to the radio. Everything else forwarded to the radio via the queue; replies `?;` if the radio is absent |
 | Main | `src/main.cpp` | WiFiManager (no restart on portal timeout — would cut the SPE feed), MQTT, ArduinoOTA, RGB status LED |
 
 Tunables are in `include/config.h` (baud rates, pins, poll/stale timings,
@@ -198,8 +200,8 @@ radio → SPE path doesn't need Wi-Fi.
 1. ~~Flash an S3~~ (done). Check the USB link: power the board from its 5V
    pin (or COM port), native USB → radio. LED goes green; `FA;` over TCP
    4533 returns the VFO.
-2. Test TCP CAT with Hamlib (`rigctl -m 2028 -r rgo-spe-cat.local:4533 f`)
-   and WSJT-X.
+2. ~~Test TCP CAT with Hamlib~~ (done). Test WSJT-X: rig Kenwood TS-480,
+   network server `192.168.30.191:4533`, PTT via CAT.
 3. Make the DB15 cable (pins 10, 4, 11→GND, optional 3 via divider), check the
    amp's CAT baud matches `SPE_BAUD`, bench test with the
    amp in standby before keying up.
@@ -214,8 +216,12 @@ radio → SPE path doesn't need Wi-Fi.
 - **IDF logs are compiled out** (`CONFIG_LOG_MAXIMUM_LEVEL 1` in the Arduino
   libs), so USB stack problems are silent. The driver's 2 s scan prints the
   device count and raw DWC `HPRT` port state when it changes.
-- **RGO ONE answers `MD;` with a bare `MD;`** (no mode digit). Use `IF;` for
-  mode; Hamlib's TS-480 backend mostly does.
+- **RGO ONE answers `MD;` with a bare `MD;`** (no mode digit), and gives no
+  reply to `PS;` or `AI;`. Hamlib's TS-480 backend sends all three, so
+  `get_mode` failed with "Protocol error" and the open took ~7 s of
+  timeouts. The TCP server now answers these locally (see Firmware design).
+  It also absorbs `AI1;`/`AI2;`: auto-info would make the radio send
+  unsolicited frames and break the poll.
 - **Homebrew `pio` fails** with "Python version must be 3.10+" (it runs on
   Python 3.9). `flash.sh`, `monitor.sh` and `install.py` prefer
   `~/.platformio/penv/bin/pio`, which works.
@@ -224,6 +230,11 @@ radio → SPE path doesn't need Wi-Fi.
   radio's DTR/RTS PTT/key setting before probing.
 
 ## What changed
+
+- **2026-11-14** — **Hamlib works over TCP CAT.** The TCP server answers
+  `MD;`, `PS;` and `AI;` locally and absorbs `AI` set commands. `rigctl -m
+  2028` reads freq / mode / VFO / PTT and sets freq; open time ~3 s, down
+  from ~7 s. Tuning-follow verified over 64 polls (band jump, mode changes).
 
 - **2026-11-14** — **Radio link working.** Root cause of "radio shows PC but
   S3 sees no device": the IDF enumeration filter (enabled in the Arduino
