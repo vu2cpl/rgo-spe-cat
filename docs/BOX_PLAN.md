@@ -1,6 +1,6 @@
 # Box plan: RGO ONE CAT + audio interface
 
-**Status: enclosure draft 4 (2026-11-14).** The model is
+**Status: enclosure draft 5 (2026-11-14).** The model is
 `enclosure/rgo_box.scad`. It is not printed yet.
 
 **Decided:**
@@ -31,7 +31,7 @@ and no GPIO hack on the CM108.
 | PWR | S3 COM USB-C (same slot) | USB charger (USB-A → USB-C cable) |
 | IN | CM108 mic jack, 1/8" | Radio audio cable, RX plug |
 | OUT | CM108 headphone jack, 1/8" | Radio audio cable, TX plug |
-| AMP | DB9 female, panel mount | SPE CAT: DB9 male → DB15 male cable (see below) |
+| AMP | 2.5 mm stereo (TRS) jack, panel mount | SPE CAT: 2.5 mm TRS plug → DB15 male cable (see below) |
 | PC | Cable notch, closed by a tab on the lid | PC (CM108 audio) |
 
 The status LED shows through a window in the lid. Put a ferrite clamp on
@@ -96,21 +96,26 @@ the dongle and the radio, and run WSJT-X.
   - Amp pin 3 → 10 k → GPIO18, with 20 k from GPIO18 to GND.
   - GND → pins 4 and 11.
 
-  These wires now go to the panel DB9 female instead of loose wires (see
+  These wires now go to the panel AMP jack instead of loose wires (see
   the amp cable below).
 
-## Amp cable (DB9 on the box → DB15 on the amp)
+## Amp cable (2.5 mm jack on the box → DB15 on the amp)
 
-The amp needs only 3 wires. The box has a **DB9 female**; the cable is
-**DB9 male → DB15 male** (the amp's socket takes a male plug). Pin 11 (KEN
-TTL select) is joined to pin 4 inside the DB15 hood, so it needs no wire of
-its own.
+The amp needs only 3 wires, so the box has a **2.5 mm stereo (TRS) panel
+jack**. It is a different size from the 1/8" audio jacks, so the amp and
+audio cables can't be mixed up. The cable is a **2.5 mm TRS plug → DB15
+male** (the amp's socket takes a male plug). Pin 11 (KEN TTL select) is
+joined to pin 4 inside the DB15 hood, so it needs no wire of its own.
 
-| Box DB9 pin | Inside the box | Wire | Amp DB15 pin |
+| Box jack | Inside the box | Wire | Amp DB15 pin |
 |---|---|---|---|
-| 2 | S3 GPIO17 (TX) | Core 1 | 10 (RX TTL) |
-| 3 | 10 k → GPIO18, 20 k GPIO18 → GND | Core 2 | 3 (TX TTL, 5 V) |
-| 5 | GND | Screen | 4 (GND), and 11 joined to 4 in the hood |
+| Tip | S3 GPIO17 (TX) through **220 Ω** | Core 1 | 10 (RX TTL) |
+| Ring | 10 k → GPIO18, 20 k GPIO18 → GND | Core 2 | 3 (TX TTL, 5 V) |
+| Sleeve | GND | Screen | 4 (GND), and 11 joined to 4 in the hood |
+
+A jack shorts its contacts for a moment as a plug goes in. The 220 Ω keeps
+GPIO17 safe during that short (the ring line already has its 10 k). Plug
+and unplug the amp cable with the box powered off, to be safe.
 
 ## Power: USB charger
 
@@ -121,7 +126,7 @@ changes when the PC is off.
 
 ## Enclosure
 
-Draft 4: 121 × 79 × 27.8 mm, OpenSCAD in `enclosure/`, to be printed on the
+Draft 5: 101 × 79 × 27.8 mm, OpenSCAD in `enclosure/`, to be printed on the
 Bambu. `enclosure/README.md` lists the values to measure before printing,
 starting with the dongle's size and jack positions.
 
@@ -139,8 +144,9 @@ lining later.
 
 ## Parts to source
 
-- **Panel connector:** 1 × DB9 female, panel mount (amp side).
-- **Amp cable:** DB9 male plug + DB15 male plug, both with hoods, and about
+- **Panel connector:** 1 × 2.5 mm stereo (TRS) panel jack (amp side), and a
+  220 Ω resistor for GPIO17.
+- **Amp cable:** 2.5 mm stereo plug + DB15 male plug with hood, and about
   1 m of 2-core screened cable.
 - **Radio audio cable:**
   - 1 × DB15 male plug with hood;

@@ -282,6 +282,11 @@ radio → SPE path doesn't need Wi-Fi.
 
 ## What changed
 
+- **2026-11-14** — Enclosure draft 5: amp connector is now a **2.5 mm TRS
+  panel jack** (tip = GPIO17 via 220 Ω → amp 10, ring = amp 3 → divider →
+  GPIO18, sleeve = GND → amp 4; amp 11 joined to 4 in the DB15 hood).
+  2.5 mm so it can't be confused with the 1/8" audio jacks. Box 101 × 79 ×
+  27.8 mm.
 - **2026-11-14** — Enclosure draft 4: amp panel connector DB15 → **DB9
   female** (only 3 wires: DB9 2 → amp 10, 3 ← amp 3, 5 GND → amp 4, amp
   11 joined to 4 in the DB15 hood). Box 121 × 79 × 27.8 mm.
