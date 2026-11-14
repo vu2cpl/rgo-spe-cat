@@ -282,6 +282,12 @@ radio → SPE path doesn't need Wi-Fi.
 
 ## What changed
 
+- **2026-11-14** — Started planning a box with a USB audio interface:
+  `docs/BOX_PLAN.md` (CM108 card + 2 isolation transformers on the radio's
+  ACC1 line in/out; PTT stays on CAT). Open: power, enclosure, connector
+  genders. ACC1 pinout taken from the RGO ONE manuals (pins 9/10 LINE IN,
+  11 LINE OUT, 8 PTT, 15 GND; V6 adds TTL CAT on 4–6).
+
 - **2026-11-14** — Operate test: keyed up on 3 bands with the amp in
   operate; the amp's band matched every time. Project ready for service.
 
