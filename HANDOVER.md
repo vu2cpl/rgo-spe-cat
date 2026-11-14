@@ -32,7 +32,13 @@
   `{"ok":true,"freq_hz":7088020,"band":"40m","mode":"LSB","tx":false}`.
 - `OTA_PASS` is set in `secrets.h` (same as the mains monitor), so OTA
   uploads need it; COM flashing doesn't.
-- **Not yet tested:** the SPE output.
+- **SPE amp follows band changes — verified 2026-11-14** (amp in standby).
+  Polled wiring: pins 10, 3 (via 10 k / 20 k divider), 4 and 11. The amp's
+  TTL CAT is **inverted** (idles low); `SPE_INVERT` runs UART1 inverted on
+  both pins. The amp polls `IF;` about every 240 ms at 9600; the S3
+  answers from the cached radio state.
+- **All parts verified** (radio link, TCP CAT / Hamlib / WSJT-X / PTT, MQTT,
+  SPE). Not yet done: keying into the amp with it in operate.
 - Radio facts measured on the Mac (see "Radio — measured facts" below).
 - Git: private repo [vu2cpl/rgo-spe-cat](https://github.com/vu2cpl/rgo-spe-cat), branch `master`.
 
@@ -83,8 +89,8 @@ the amp so the SPE follows band changes automatically.
 | --- | --- | --- | --- |
 | USB CAT | S3 native USB port (host) | RGO ONE USB Type B | USB-C to USB-B cable. OTG port must supply 5 V on VBUS: set the board's jumper/solder pad or feed 5 V in |
 | Console / flashing | S3 "COM" port (UART0 bridge) | Mac | The native port is busy as USB host, so flash and monitor via COM |
-| SPE TX data | S3 GPIO17 (UART1 TX, 3.3 V) | SPE DB15 pin 10 (RX TTL) | Amp input is 5 V TTL. 3.3 V high is above standard TTL V<sub>IH</sub> (2.0 V) so it should read; add a 74AHCT125 buffer if the amp misses characters |
-| SPE RX data | SPE DB15 pin 3 (TX TTL, **5 V**) | S3 GPIO18 (UART1 RX) | Optional — carries the amp's polls. **Needs a divider** (e.g. 10 k / 20 k): the S3 is not 5 V tolerant. Leave unconnected for listen-only mode |
+| SPE TX data | S3 GPIO17 (UART1 TX, 3.3 V) | SPE DB15 pin 10 (RX TTL) | Amp input is 5 V TTL, **inverted polarity** (idles low). The S3's 3.3 V levels read fine (verified) |
+| SPE RX data | SPE DB15 pin 3 (TX TTL, **5 V**) | S3 GPIO18 (UART1 RX) | Carries the amp's `IF;` polls (inverted, 9600). **Needs a divider** — pin 3 → 10 k → GPIO18, GPIO18 → 20 k → GND (as built): the S3 is not 5 V tolerant. Required in practice: the amp works polled |
 | TTL select | SPE DB15 pin 11 (KEN TTL) | GND | Selects the 5 V TTL Kenwood interface instead of RS-232 (pins 1/9) |
 | Ground | S3 GND | SPE DB15 pin 4 (GND) | Required |
 
@@ -105,8 +111,12 @@ male** cable plug. Pinout from the Expert 1.5K-FA manual rev 3.2 §12.1.
     exchanged". The ESP32's unsolicited `FA…;` pushes and 2 s keepalive feed it.
     No 5 V reaches the S3. Consider `SPE_PUSH_IF 1` here, in case the amp
     parses `IF` frames rather than `FA`.
-- The manual doesn't say which Kenwood commands the amp sends when polling;
-  sniff pin 3 to confirm (expect `FA;` or `IF;`).
+- **Measured 2026-11-14:** in Kenwood TTL mode the amp polls **`IF;` every
+  ~240 ms at 9600 baud, inverted polarity** (line idles low, start bit
+  high — RS-232 sense at TTL levels), with ~3 ms between characters. Its
+  input on pin 10 expects the same polarity: non-inverted pushes were
+  ignored, inverted replies work. Listen-only (pin 3 open) with inversion
+  is untested.
 
 **Board = VCC-GND YD-ESP32-S3 (N16R8).** Seen from the front with the
 sockets at the top: left USB-C = **COM** (CH343, console), right USB-C =
@@ -141,7 +151,7 @@ state. The radio → SPE path starts before Wi-Fi and never depends on it.
 | --- | --- | --- |
 | USB link | `src/ftdi_host.*` | IDF USB host + client + driver tasks. Matches 0403:6001, forces **DTR/RTS low** first, sets 19200 8N1, no flow, 4 ms latency. Strips the 2 FTDI status bytes per IN packet into a stream buffer. Handles hot unplug/replug |
 | Rig state | `src/rig.*` | Radio task: polls `IF;` every 150 ms, parses freq / mode / TX, keeps the raw IF frame. PC commands go through one queue; a set command triggers an immediate re-poll. State goes invalid after 1.5 s without a good reply |
-| SPE output | `src/spe.*` | UART1 Kenwood emulation. Answers `FA;` `IF;` `AI;` `ID;` from cache; pushes `FA…;` on change plus a 2 s keepalive. **Fail-safe:** sends nothing while state is invalid |
+| SPE output | `src/spe.*` | UART1 Kenwood emulation, **inverted** (`SPE_INVERT`). Answers the amp's `IF;` polls (and `FA;` `AI;` `ID;`) from cache; also pushes `FA…;` + `IF…;` on change plus a 2 s keepalive. **Fail-safe:** sends nothing while state is invalid. `SPE_LOG` / `SPE_DIAG` switches for bench debugging |
 | TCP CAT | `src/tcp_cat.*` | Port 4533, up to 3 clients. `FA;`/`IF;` from cache. Answered locally for Hamlib: `MD;` (mode digit from the cached IF), `FW;` → `FW0000;`, `PS;` → `PS1;`, `AI;` → `AI0;`; `AI` set commands are absorbed, never sent to the radio. Everything else forwarded to the radio via the queue; replies `?;` if the radio is absent |
 | Main | `src/main.cpp` | WiFiManager (no restart on portal timeout — would cut the SPE feed), MQTT, ArduinoOTA, RGB status LED |
 
@@ -202,7 +212,8 @@ radio → SPE path doesn't need Wi-Fi.
 - [x] ~~Confirm the RGO ONE's CAT command set~~ — TS-480 style (`ID;` unsupported)
 - [x] ~~Does the SPE poll or only listen? Baud?~~ — polls in direct Kenwood mode; listen-only also supported. Baud set in SET → CAT, default 9600 (manual rev 3.2)
 - [x] ~~SPE CAT output voltage~~ — 5 V TTL (pin 3); divider needed if wired
-- [ ] Choose polled vs listen-only wiring; confirm which query the amp sends (sniff pin 3)
+- [x] ~~Choose polled vs listen-only wiring; confirm which query the amp sends~~ — polled; amp sends `IF;` inverted at 9600
+- [ ] Final check with the amp in operate: key up on a few bands and confirm the amp's band matches
 - [x] ~~How the S3 board enables 5 V on the OTG port's VBUS~~ — `USB-OTG` solder jumper on the back, behind the USB socket; bridged 2026-11-14 (it bypasses the diode between the native port's VBUS and the 5 V rail)
 - [x] ~~Final power feed~~ — COM socket via a USB-A cable (it lacks USB-C CC resistors), or 5 V into 5Vin
 - [x] ~~MQTT: put the `iot` password in `secrets.h`~~ — done; broker ACL grant `shack/rgo-spe-cat/#` added 2026-11-14
@@ -216,11 +227,17 @@ radio → SPE path doesn't need Wi-Fi.
    pin (or COM port), native USB → radio. LED goes green; `FA;` over TCP
    4533 returns the VFO.
 2. ~~Test TCP CAT with Hamlib, WSJT-X and PTT via CAT~~ (done).
-3. Make the DB15 cable (pins 10, 4, 11→GND, optional 3 via divider), check the
-   amp's CAT baud matches `SPE_BAUD`, bench test with the
-   amp in standby before keying up.
+3. ~~Make the DB15 cable and bench test in standby~~ (done — amp follows).
+4. Key up with the amp in operate on a few bands; then box it up.
 
 ## Known gotchas
+
+- **The SPE's TTL CAT is inverted** (idles low). With a normal UART the
+  S3 read its `IF;` polls as `62 5B 2E` (`b[.`) and the amp ignored the S3's
+  frequency. Found with `SPE_DIAG 1` (times edges on GPIO18: 104 µs bits,
+  idle 0). Fix: `SPE_INVERT true` → `HardwareSerial::begin(..., invert)`,
+  which inverts both RX and TX. `SPE_LOG 1` logs each amp poll, and
+  undecodable bytes in hex.
 
 - **USB enumeration needs `enum_filter_cb`.** The Arduino libs build the IDF
   with `CONFIG_USB_HOST_ENABLE_ENUM_FILTER_CALLBACK=1`; with no callback set,
@@ -263,6 +280,13 @@ radio → SPE path doesn't need Wi-Fi.
   radio's DTR/RTS PTT/key setting before probing.
 
 ## What changed
+
+- **2026-11-14** — **SPE amp follows the radio.** The amp ignored the S3
+  until the UART was inverted: its TTL CAT idles low. Edge timing on GPIO18
+  (`SPE_DIAG`) showed 9600 baud, inverted, `IF;` every ~240 ms. Pin 3 is
+  now wired through a 10 k / 20 k divider so the amp's polls are answered.
+  Added `SPE_INVERT`, `SPE_LOG` (hex dump of undecodable bytes) and
+  `SPE_DIAG`; `SPE_PUSH_IF` now on.
 
 - **2026-11-14** — **MQTT connected.** `iot` and OTA passwords in the local
   `secrets.h`; the broker accepts the login. The broker silently drops

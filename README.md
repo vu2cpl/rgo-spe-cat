@@ -4,9 +4,9 @@ ESP32-S3 CAT bridge: polls the RGO ONE over USB host and feeds Kenwood-format
 frequency to the SPE amp, so the amp follows band changes. Also serves Kenwood
 CAT over TCP for Hamlib / WSJT-X and publishes rig state to MQTT.
 
-**Status:** running on an S3 N16R8 — radio USB link, rig polling, Wi-Fi, TCP
-CAT, Hamlib (rigctl), WSJT-X, PTT via CAT and MQTT verified; the SPE output is
-not yet tested.
+**Status:** working on an S3 N16R8 — radio USB link, rig polling, Wi-Fi, TCP
+CAT, Hamlib (rigctl), WSJT-X, PTT via CAT, MQTT and the SPE amp following band
+changes are all verified.
 
 ## How it works
 
@@ -26,9 +26,13 @@ a stale band.
 - ESP32-S3 N16R8 board. Native USB port → radio's USB-B (OTG port must supply
   5 V on VBUS). Flash and monitor via the board's COM port.
 - SPE Expert 1.5K-FA CAT connector (DB15 male plug, 5 V TTL Kenwood):
-  GPIO17 → pin 10 (RX TTL), GND ↔ pin 4, pin 11 (KEN TTL) → GND.
-  Optional for the amp's polls: pin 3 (TX TTL, 5 V) → resistor divider → GPIO18
-  (the S3 is not 5 V tolerant). See `HANDOVER.md` for polled vs listen-only.
+  - GPIO17 → pin 10 (RX TTL)
+  - pin 3 (TX TTL, 5 V) → 10 kΩ → GPIO18, with 20 kΩ from GPIO18 to GND
+    (the S3 is not 5 V tolerant)
+  - GND ↔ pin 4, and pin 11 (KEN TTL) → GND
+
+  The amp polls `IF;` at 9600 baud with **inverted** polarity (the line
+  idles low); the firmware inverts UART1 to match (`SPE_INVERT`).
 
 ## Quick start
 

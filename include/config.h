@@ -36,7 +36,10 @@
 #define SPE_RX_PIN         18      // DB15 pin 3 (TX TTL, 5 V!) → divider → S3 RX. Optional: amp's polls
 #define SPE_BAUD           9600
 #define SPE_PUSH_FA        1       // push unsolicited FA…; on every frequency change
-#define SPE_PUSH_IF        0       // also push IF…; frames (Kenwood AI-style), if the amp wants them
+#define SPE_PUSH_IF        1       // also push IF…; frames (Kenwood AI-style), if the amp wants them
+#define SPE_LOG            0       // 1 = log every amp poll (and undecodable bytes, in hex) on the console
+#define SPE_DIAG           0       // bench: time edges on the RX pin instead of decoding
+#define SPE_INVERT         true    // SPE TTL CAT idles low (measured 2026-11-14: amp polls "IF;" inverted, 9600)
 #define SPE_KEEPALIVE_MS   2000    // re-push FA this often even without a change (0 = off)
 
 // ── TCP CAT server (Kenwood over TCP, for Hamlib / WSJT-X) ─
