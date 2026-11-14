@@ -5,8 +5,8 @@ frequency to the SPE amp, so the amp follows band changes. Also serves Kenwood
 CAT over TCP for Hamlib / WSJT-X and publishes rig state to MQTT.
 
 **Status:** running on an S3 N16R8 — radio USB link, rig polling, Wi-Fi, TCP
-CAT, Hamlib (rigctl) and WSJT-X verified; the SPE output and PTT via CAT are
-not yet tested.
+CAT, Hamlib (rigctl), WSJT-X and PTT via CAT verified; the SPE output is not
+yet tested.
 
 ## How it works
 

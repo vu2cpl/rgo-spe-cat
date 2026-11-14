@@ -20,9 +20,11 @@
 - **WSJT-X verified 2026-11-14:** rig Kenwood TS-480, Serial Port field
   `192.168.30.191:4533`, follows tuning and band changes. Tested with a
   separate config (`--rig-name=RGO`, `~/Library/Preferences/WSJT-X - RGO.ini`)
-  so the main WSJT-X setup is untouched. PTT over CAT not yet keyed.
-- **Not yet tested:** the SPE output, MQTT (no password in `secrets.h` yet),
-  PTT via CAT.
+  so the main WSJT-X setup is untouched. Lag is at most WSJT-X's poll
+  interval (1 s minimum); the S3 side adds ~7 ms.
+- **PTT via CAT verified 2026-11-14:** `rigctl T 1` keys the radio (IF TX
+  digit → 1), `T 0` releases it (→ 0).
+- **Not yet tested:** the SPE output, MQTT (no password in `secrets.h` yet).
 - Radio facts measured on the Mac (see "Radio — measured facts" below).
 - Git: private repo [vu2cpl/rgo-spe-cat](https://github.com/vu2cpl/rgo-spe-cat), branch `master`.
 
@@ -204,8 +206,7 @@ radio → SPE path doesn't need Wi-Fi.
 1. ~~Flash an S3~~ (done). Check the USB link: power the board from its 5V
    pin (or COM port), native USB → radio. LED goes green; `FA;` over TCP
    4533 returns the VFO.
-2. ~~Test TCP CAT with Hamlib and WSJT-X~~ (done). Still to do: PTT via
-   CAT (amp in standby first).
+2. ~~Test TCP CAT with Hamlib, WSJT-X and PTT via CAT~~ (done).
 3. Make the DB15 cable (pins 10, 4, 11→GND, optional 3 via divider), check the
    amp's CAT baud matches `SPE_BAUD`, bench test with the
    amp in standby before keying up.
@@ -244,6 +245,10 @@ radio → SPE path doesn't need Wi-Fi.
   radio's DTR/RTS PTT/key setting before probing.
 
 ## What changed
+
+- **2026-11-14** — PTT via CAT verified over TCP (`rigctl T 1` / `T 0`; the
+  radio's IF TX digit follows). WSJT-X lag measured: bounded by its 1 s
+  minimum poll, not the S3.
 
 - **2026-11-14** — **WSJT-X works; Wi-Fi sleep disabled.** WSJT-X follows
   the radio over TCP CAT. The lag the operator saw came from ESP32 Wi-Fi
