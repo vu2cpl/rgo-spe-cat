@@ -102,8 +102,13 @@ sockets at the top: left USB-C = **COM** (CH343, console), right USB-C =
   connect the USB socket to a Mac/PC while 5Vin is also fed (two supplies
   tied with no diode). On the bench with the Mac on the USB socket as the
   only supply, it's fine.
-- In service: power via the COM socket from a USB-A charger/port (or 5 V
-  into 5Vin); USB socket → radio. COM to the Mac doubles as the log.
+- **VBUS on the USB socket (FNB58, 2026-11-14):** 4.02 V with COM fed from
+  the Mac's USB-A port; **4.7 V with COM fed from an external 5 V charger**.
+  The drop is mostly diode D1 (COM → rail). 4.7 V is within USB device
+  spec; 4.0 V is marginal for a bus-powered FT232R.
+- In service: power the COM socket from a **5 V USB-A charger** (or a
+  powered hub between S3 and radio); USB socket → radio. Use the Mac on COM
+  only for logs/flashing on the bench.
 
 RF hardening: shielded enclosure, ferrites on the USB, CAT and power leads.
 The radio runs 100 W with the SPE close by.
@@ -206,6 +211,10 @@ radio → SPE path doesn't need Wi-Fi.
   radio's DTR/RTS PTT/key setting before probing.
 
 ## What changed
+
+- **2026-11-14** — Measured VBUS on the USB socket: 4.02 V from the Mac's
+  USB-A port, 4.7 V from an external charger. In-service power = charger on
+  COM.
 
 - **2026-11-14** — Bridged the `USB-OTG` pad (back of board, behind the USB
   socket) so the board can power the radio's USB side. The COM socket only
