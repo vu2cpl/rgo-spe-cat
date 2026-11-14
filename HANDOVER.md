@@ -24,7 +24,14 @@
   interval (1 s minimum); the S3 side adds ~7 ms.
 - **PTT via CAT verified 2026-11-14:** `rigctl T 1` / `T 0` and WSJT-X
   Test PTT key and release the radio.
-- **Not yet tested:** the SPE output, MQTT (no password in `secrets.h` yet).
+- **MQTT 2026-11-14:** logs in to the broker as `iot` (broker log: `New
+  client connected … as rgo-spe-cat (u'iot')`). The broker ACL gained
+  `topic write shack/rgo-spe-cat/#` under `user iot` (see
+  `vu2cpl-shack/MQTT_AUTH.md`). Topic flow not yet confirmed from a
+  subscriber.
+- `OTA_PASS` is set in `secrets.h` (same as the mains monitor), so OTA
+  uploads need it; COM flashing doesn't.
+- **Not yet tested:** the SPE output.
 - Radio facts measured on the Mac (see "Radio — measured facts" below).
 - Git: private repo [vu2cpl/rgo-spe-cat](https://github.com/vu2cpl/rgo-spe-cat), branch `master`.
 
@@ -197,8 +204,9 @@ radio → SPE path doesn't need Wi-Fi.
 - [ ] Choose polled vs listen-only wiring; confirm which query the amp sends (sniff pin 3)
 - [x] ~~How the S3 board enables 5 V on the OTG port's VBUS~~ — `USB-OTG` solder jumper on the back, behind the USB socket; bridged 2026-11-14 (it bypasses the diode between the native port's VBUS and the 5 V rail)
 - [x] ~~Final power feed~~ — COM socket via a USB-A cable (it lacks USB-C CC resistors), or 5 V into 5Vin
-- [ ] MQTT: put the `iot` password in `secrets.h` (boot log shows `rc=5`, not authorised)
-- [ ] Set `OTA_PASS` in `secrets.h` before the box goes into the shack
+- [x] ~~MQTT: put the `iot` password in `secrets.h`~~ — done; broker ACL grant `shack/rgo-spe-cat/#` added 2026-11-14
+- [ ] Confirm `shack/rgo-spe-cat/status` and `/rig` arrive (MQTT Explorer or Node-RED)
+- [x] ~~Set `OTA_PASS` in `secrets.h`~~ — done 2026-11-14
 - [ ] Optional: small status web page (deferred; MQTT + LED cover it for now)
 
 ## Next steps
@@ -242,6 +250,10 @@ radio → SPE path doesn't need Wi-Fi.
   On this Mac the JTDX launch daemon set 32 MB at boot and WSJT-X failed
   with "shared memory error"; fixed by raising `shmmax` (and aligning
   `com.jtdx.sysctl.plist`).
+- **The broker drops publishes it has no ACL grant for**, without an
+  error: the login succeeds and nothing arrives. A new topic tree needs a
+  `topic write` line under `user iot` in `/etc/mosquitto/aclfile` on
+  noderedpi4, then `sudo systemctl reload mosquitto`.
 - **Homebrew `pio` fails** with "Python version must be 3.10+" (it runs on
   Python 3.9). `flash.sh`, `monitor.sh` and `install.py` prefer
   `~/.platformio/penv/bin/pio`, which works.
@@ -250,6 +262,11 @@ radio → SPE path doesn't need Wi-Fi.
   radio's DTR/RTS PTT/key setting before probing.
 
 ## What changed
+
+- **2026-11-14** — **MQTT connected.** `iot` and OTA passwords in the local
+  `secrets.h`; the broker accepts the login. The broker silently drops
+  `iot` publishes outside its ACL, so `topic write shack/rgo-spe-cat/#` was
+  added on noderedpi4 and mosquitto reloaded (`vu2cpl-shack` 67e5269).
 
 - **2026-11-14** — **WSJT-X stays connected; Test PTT works.** The radio
   never answers `FW;`; WSJT-X timed out on it and reconnected every ~9 s.

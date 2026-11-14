@@ -56,7 +56,8 @@ Hamlib rig that field takes the network address. The RGO ONE doesn't answer `MD;
 
 ## MQTT
 
-- Broker: `192.168.1.169:1883` (auth required — role account in `secrets.h`).
+- Broker: `192.168.1.169:1883` (auth required — `iot` role account in `secrets.h`;
+  the broker ACL grants `iot` write on `shack/rgo-spe-cat/#`).
 - `shack/rgo-spe-cat/status` — retained; LWT `{"event":"offline"}`, 30 s heartbeat.
 - `shack/rgo-spe-cat/rig` — retained; `{"ok","freq_hz","band","mode","tx"}`.
 
