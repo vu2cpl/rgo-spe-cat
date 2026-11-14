@@ -1,7 +1,7 @@
 # Box plan — RGO ONE CAT + audio interface
 
-**Status: planning (2026-11-14).** Nothing built yet. Decisions marked
-**OPEN** still need Manoj's call.
+**Status: planning (2026-11-14).** Nothing built yet. Decided: USB-charger
+power, 3D-printed enclosure, radio ACC1 is female.
 
 ## What goes in the box
 
@@ -67,35 +67,41 @@ TX:  CM108 phones L ── 1k ──┐               ┌──► ACC1 pin 10 (
   the S3 / radio ground anywhere in the box. Mount the CM108 board on its
   own standoffs, keep wiring apart.
 
-## Power — **OPEN**
+## Power — decided: USB charger
 
 | Option | Pros | Cons |
 |---|---|---|
-| **USB charger into the S3 COM socket (recommended)** | Amp follows band changes with the PC off; keeps PC ground isolated from radio ground | One more cable (charger) |
+| **USB charger into the S3 COM socket (chosen)** | Amp follows band changes with the PC off; keeps PC ground isolated from radio ground | One more cable (charger) |
 | Power from the PC through a small hub inside | One USB cable to the PC | Box dead when the PC is off; the hub would join PC ground to the S3/radio ground and undo the transformer isolation |
 
 ## Panel connectors (draft)
 
 | Connector | Goes to |
 |---|---|
-| DB15 (gender **OPEN** — check ACC1 on the radio) | Radio ACC1 (audio) |
-| DB15 female | SPE CAT cable (amp end takes a male DB15) |
+| **DB15 male** | Radio ACC1 (audio) — a standard DB15 M–F extension cable: male end into the radio's female ACC1, female end onto the box |
+| **DB15 female** | SPE CAT — DB15 M–M cable (the amp's socket takes a male plug) |
 | USB-C (S3 native port, via cut-out or panel extension) | Radio USB-B (CAT) |
 | USB-C (S3 COM port) | Charger (power) |
 | USB cable through a strain relief | PC (CM108 audio) |
 | Light pipe / window | S3 RGB status LED |
 
+The two DB15s are deliberately **opposite genders**, so the radio and amp
+cables can't be swapped by mistake.
+
 Ferrite clamps on every cable leaving the box (1 kW of RF nearby).
 
-## Enclosure — **OPEN**
+## Enclosure — decided: 3D-printed
 
 | Option | Pros | Cons |
 |---|---|---|
 | 3D-printed (OpenSCAD like `rx888-case`, Bambu) | Exact cut-outs, fast, cheap | No shielding near the amp |
 | Aluminium box (drilled) | Shields the S3 and audio from RF | Panel cut-outs by hand; template from the plan |
 
-Middle way: printed box with a copper-tape or foil lining tied to radio
-ground.
+Chosen: 3D-printed, OpenSCAD in `enclosure/` (same approach as
+`rx888-case`), printed on the Bambu. If RF gets into the S3 or the audio
+with the amp keyed, add a copper-tape lining tied to radio ground later.
+Needs measured sizes of the S3 board, the stripped CM108 board, the
+transformers and the panel parts before the model is drawn.
 
 ## Build order
 
