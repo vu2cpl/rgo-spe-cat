@@ -1,16 +1,17 @@
 # Box plan — RGO ONE CAT + audio interface
 
-**Status: planning (2026-11-14).** Nothing built yet. Decided: USB-charger
-power, 3D-printed enclosure, radio ACC1 is female.
+**Status: planning (2026-11-14).** Nothing built yet. Decided: audio inside
+the box, simplified (no transformers, no trimpots); USB-charger power;
+3D-printed enclosure; radio ACC1 is female.
 
 ## What goes in the box
 
 | Part | Job |
 |---|---|
 | ESP32-S3 board (YD-ESP32-S3 N16R8) | CAT: radio USB ↔ SPE amp, TCP CAT, MQTT (as now) |
-| C-Media CM108 USB sound dongle (card 2 or 3, `0D8C:0014`) | Audio to/from the PC for WSJT-X. Mono mic in, stereo out, 48 kHz, driverless on macOS |
-| 2 × 600:600 Ω audio isolation transformers | Break the ground path between PC and radio; keep RF off the audio |
-| 2 × 10 kΩ trimpots + a few resistors/caps | Set RX and TX audio levels once |
+| C-Media CM108 USB sound dongle (card 2 or 3, `0D8C:0014`), **left whole in its shell** | Audio to/from the PC for WSJT-X. Mono mic in, stereo out, 48 kHz, driverless on macOS |
+| Short USB extension (dongle → out of the box) | Dongle's USB to the PC |
+| Small resistor pad: 3 resistors + two 3.5 mm plugs | Match the radio's line levels to the dongle |
 
 PTT stays on **CAT** (already verified with WSJT-X), so no PTT wire or
 GPIO hack on the CM108.
@@ -23,10 +24,10 @@ From the RGO ONE manual (2020 rev 2.00A and V6 rev 1.01A agree):
 
 | ACC1 pin | Signal | Box side |
 |---|---|---|
-| 11 | LINE OUT (RX audio) | → transformer T1 → level trimpot → DC-block cap → CM108 **mic in** |
-| 10 | LINE IN + (600 Ω, balanced) | ← transformer T2 secondary |
-| 9 | LINE IN − | ← transformer T2 secondary (other end) |
-| 15 | Ground | T1 primary return only — not tied to the CM108 side |
+| 11 | LINE OUT (RX audio) | → 10 k → CM108 mic plug tip (1 k to ground) |
+| 10 | LINE IN + (600 Ω) | ← 1 k ← CM108 phones plug tip |
+| 9 | LINE IN − | → ground (input driven unbalanced) |
+| 15 | Ground | CM108 plug sleeves, S3 GND |
 | 8 | PTT | not used (CAT PTT) |
 
 Radio setting: **menu 02 LINE IN = E** (external), so TX audio comes from
@@ -45,36 +46,37 @@ S3 GPIO17 → amp pin 10, amp pin 3 → 10 k → GPIO18 (20 k to GND), GND → p
 
 CM108 USB → PC. One cable, audio only.
 
-## Audio circuit (per channel)
+## Audio circuit (DigiRig-style, no isolation)
 
 ```
-RX:  ACC1 pin 11 ──┐                ┌── 10k trim ──┬── 1 µF ──► CM108 mic (tip)
-                   T1 600:600       │              │
-     ACC1 pin 15 ──┘                └──────────────┴── 1k ──► CM108 GND
-                     (radio side)      (PC side)
+RX:  ACC1 pin 11 ── 10k ──┬──► CM108 mic plug (tip)
+                         1k
+     ACC1 pin 15 ─────────┴──► CM108 mic plug (sleeve)
 
-TX:  CM108 phones L ── 1k ──┐               ┌──► ACC1 pin 10 (LINE IN +)
-                            T2 600:600
-     CM108 GND ─────────────┘               └──► ACC1 pin 9  (LINE IN −)
+TX:  CM108 phones plug (tip) ── 1k ──► ACC1 pin 10 (LINE IN +)
+     CM108 phones plug (sleeve) ─────► ACC1 pin 9 + pin 15
 ```
 
-- The CM108 mic input is sensitive (tens of mV) and carries a bias voltage,
-  hence the trimpot pad and the 1 µF DC block. Set the trimpot so WSJT-X
-  shows ~30 dB on a quiet band.
-- TX level: Mac output volume + the radio's own mic gain; the 1 k sets a
-  sane load. Adjust for no ALC on the radio.
-- **Ground isolation rule:** the CM108's ground (= PC ground) must not touch
-  the S3 / radio ground anywhere in the box. Mount the CM108 board on its
-  own standoffs, keep wiring apart.
+- RX: the 10 k / 1 k divider (÷11) brings the line out down to mic level.
+  Set the final level with the Mac's input volume (Audio MIDI Setup) so
+  WSJT-X shows ~30 dB on a quiet band. If the level is still too high or
+  too low, change the 1 k (smaller = quieter).
+- TX: Mac output volume + the radio's mic gain. Adjust for no ALC on the
+  radio. The 1 k gives the dongle a sane load.
+- The mic tip carries the dongle's mic bias; the 1 k shunts it. If it causes
+  trouble, add a 1 µF cap in series with the tip.
+- No transformer isolation: the box runs on its own charger and the
+  radio's USB goes to the S3, not the PC, so the audio cable is the only
+  PC ↔ radio path. **If hum or RF shows up in the audio, add two 600:600
+  transformers** (see git history of this file for that circuit).
 
 ## Power — decided: USB charger
 
-| Option | Pros | Cons |
-|---|---|---|
-| **USB charger into the S3 COM socket (chosen)** | Amp follows band changes with the PC off; keeps PC ground isolated from radio ground | One more cable (charger) |
-| Power from the PC through a small hub inside | One USB cable to the PC | Box dead when the PC is off; the hub would join PC ground to the S3/radio ground and undo the transformer isolation |
+A USB charger into the S3's COM socket (USB-A → USB-C cable). The amp keeps
+following band changes with the PC off. Not from the PC through a hub: the
+box would be dead whenever the PC is off.
 
-## Panel connectors (draft)
+## Panel connectors
 
 | Connector | Goes to |
 |---|---|
@@ -82,7 +84,7 @@ TX:  CM108 phones L ── 1k ──┐               ┌──► ACC1 pin 10 (
 | **DB15 female** | SPE CAT — DB15 M–M cable (the amp's socket takes a male plug) |
 | USB-C (S3 native port, via cut-out or panel extension) | Radio USB-B (CAT) |
 | USB-C (S3 COM port) | Charger (power) |
-| USB cable through a strain relief | PC (CM108 audio) |
+| USB cable through a grommet | PC (CM108 audio) |
 | Light pipe / window | S3 RGB status LED |
 
 The two DB15s are deliberately **opposite genders**, so the radio and amp
@@ -92,31 +94,29 @@ Ferrite clamps on every cable leaving the box (1 kW of RF nearby).
 
 ## Enclosure — decided: 3D-printed
 
-| Option | Pros | Cons |
-|---|---|---|
-| 3D-printed (OpenSCAD like `rx888-case`, Bambu) | Exact cut-outs, fast, cheap | No shielding near the amp |
-| Aluminium box (drilled) | Shields the S3 and audio from RF | Panel cut-outs by hand; template from the plan |
-
-Chosen: 3D-printed, OpenSCAD in `enclosure/` (same approach as
-`rx888-case`), printed on the Bambu. If RF gets into the S3 or the audio
-with the amp keyed, add a copper-tape lining tied to radio ground later.
-Needs measured sizes of the S3 board, the stripped CM108 board, the
-transformers and the panel parts before the model is drawn.
+OpenSCAD in `enclosure/` (same approach as `rx888-case`), printed on the
+Bambu. If RF gets into the S3 or the audio with the amp keyed, add a
+copper-tape lining tied to radio ground later. Needs measured sizes of the
+S3 board, the CM108 dongle (in its shell, with plugs in), the USB extension
+plug and the panel parts before the model is drawn.
 
 ## Build order
 
-1. Bench-wire the audio circuit on a breadboard to the radio's ACC1; test RX
-   decode and TX (into a dummy load) with WSJT-X. Set the trimpots.
-2. Measure the boards and connectors; finalise the panel layout.
-3. Make the enclosure.
+1. Bench test: wire the resistor pad between the CM108 and the radio's ACC1
+   (a DB15 plug and jumper wires). Check RX decode and TX (into a dummy
+   load) with WSJT-X; set levels.
+2. Measure the parts; finalise the panel layout.
+3. Print the enclosure.
 4. Fit, wire, test again: CAT, amp follow, WSJT-X audio, PTT.
 5. Update HANDOVER / README with the as-built wiring and photos.
 
 ## Parts to source
 
-- 2 × 600:600 Ω audio isolation transformers (e.g. small PCB type)
-- 2 × 10 kΩ trimpots, 2 × 1 µF caps, 1 k and misc resistors
-- 2 × DB15 panel connectors + DB15 plug for the radio ACC1 cable
-- Panel USB-C extension (optional), strain relief / cable gland
+- 1 × DB15 male panel connector (radio side) and 1 × DB15 female panel
+  connector (amp side)
+- DB15 M–F extension cable (box ↔ radio) and DB15 M–M cable (box ↔ amp)
+- Resistors: 10 k, 1 k, 1 k (plus a spare 1 µF cap)
+- Two 3.5 mm plugs (or cut from an old headphone cable)
+- Short USB-A extension (dongle → PC) and a grommet
 - Ferrite clamps (snap-on, mix 31)
 - Standoffs, screws

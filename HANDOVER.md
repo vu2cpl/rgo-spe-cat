@@ -282,6 +282,11 @@ radio → SPE path doesn't need Wi-Fi.
 
 ## What changed
 
+- **2026-11-14** — Box plan simplified (`docs/BOX_PLAN.md`): audio inside
+  the box, DigiRig-style — CM108 dongle kept whole, 3 resistors to ACC1,
+  no transformers or trimpots; levels set on the Mac. Charger power,
+  3D-printed, DB15 male for the radio / female for the amp.
+
 - **2026-11-14** — Started planning a box with a USB audio interface:
   `docs/BOX_PLAN.md` (CM108 card + 2 isolation transformers on the radio's
   ACC1 line in/out; PTT stays on CAT). Open: power, enclosure, connector
