@@ -128,6 +128,10 @@ void setup() {
     Serial.println("[WiFi] portal timed out — running offline");
   }
   WiFi.setAutoReconnect(true);
+  // Modem-sleep (the default) holds replies until the next beacon: CAT
+  // round trips jumped from ~7 ms to ~210 ms. Mains-powered, so keep the
+  // radio awake.
+  WiFi.setSleep(false);
 
   tcpcat::begin();
 

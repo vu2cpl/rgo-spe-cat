@@ -17,8 +17,12 @@
   4533: `FA;`/`IF;` from cache, `FB;` forwarded live, ~7 ms round trip.
 - **Hamlib verified 2026-11-14:** `rigctl -m 2028 -r 192.168.30.191:4533`
   reads freq / mode / VFO / PTT and sets freq; opens in ~3 s with no timeouts.
+- **WSJT-X verified 2026-11-14:** rig Kenwood TS-480, Serial Port field
+  `192.168.30.191:4533`, follows tuning and band changes. Tested with a
+  separate config (`--rig-name=RGO`, `~/Library/Preferences/WSJT-X - RGO.ini`)
+  so the main WSJT-X setup is untouched. PTT over CAT not yet keyed.
 - **Not yet tested:** the SPE output, MQTT (no password in `secrets.h` yet),
-  WSJT-X.
+  PTT via CAT.
 - Radio facts measured on the Mac (see "Radio — measured facts" below).
 - Git: private repo [vu2cpl/rgo-spe-cat](https://github.com/vu2cpl/rgo-spe-cat), branch `master`.
 
@@ -200,8 +204,8 @@ radio → SPE path doesn't need Wi-Fi.
 1. ~~Flash an S3~~ (done). Check the USB link: power the board from its 5V
    pin (or COM port), native USB → radio. LED goes green; `FA;` over TCP
    4533 returns the VFO.
-2. ~~Test TCP CAT with Hamlib~~ (done). Test WSJT-X: rig Kenwood TS-480,
-   network server `192.168.30.191:4533`, PTT via CAT.
+2. ~~Test TCP CAT with Hamlib and WSJT-X~~ (done). Still to do: PTT via
+   CAT (amp in standby first).
 3. Make the DB15 cable (pins 10, 4, 11→GND, optional 3 via divider), check the
    amp's CAT baud matches `SPE_BAUD`, bench test with the
    amp in standby before keying up.
@@ -222,6 +226,16 @@ radio → SPE path doesn't need Wi-Fi.
   timeouts. The TCP server now answers these locally (see Firmware design).
   It also absorbs `AI1;`/`AI2;`: auto-info would make the radio send
   unsolicited frames and break the poll.
+- **Wi-Fi modem-sleep adds up to ~200 ms per reply.** The ESP32 default
+  (`WIFI_PS_MIN_MODEM`) made CAT round trips ~210 ms and WSJT-X lag
+  visibly. `main.cpp` calls `WiFi.setSleep(false)`; ping went from avg 87 ms
+  to 7 ms.
+- **WSJT-X with a Hamlib network rig reads the address from the "Serial
+  Port" field** (`CATSerialPort` in the ini), not `CATNetworkPort`.
+- **Mac shared-memory limits:** WSJT-X needs `kern.sysv.shmmax=52428800`.
+  On this Mac the JTDX launch daemon set 32 MB at boot and WSJT-X failed
+  with "shared memory error"; fixed by raising `shmmax` (and aligning
+  `com.jtdx.sysctl.plist`).
 - **Homebrew `pio` fails** with "Python version must be 3.10+" (it runs on
   Python 3.9). `flash.sh`, `monitor.sh` and `install.py` prefer
   `~/.platformio/penv/bin/pio`, which works.
@@ -230,6 +244,12 @@ radio → SPE path doesn't need Wi-Fi.
   radio's DTR/RTS PTT/key setting before probing.
 
 ## What changed
+
+- **2026-11-14** — **WSJT-X works; Wi-Fi sleep disabled.** WSJT-X follows
+  the radio over TCP CAT. The lag the operator saw came from ESP32 Wi-Fi
+  modem-sleep (~210 ms per reply); `WiFi.setSleep(false)` brings CAT round
+  trips back to ~7 ms. WSJT-X's own poll interval (Settings → Radio) adds
+  the rest.
 
 - **2026-11-14** — **Hamlib works over TCP CAT.** The TCP server answers
   `MD;`, `PS;` and `AI;` locally and absorbs `AI` set commands. `rigctl -m

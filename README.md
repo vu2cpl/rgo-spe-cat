@@ -5,7 +5,7 @@ frequency to the SPE amp, so the amp follows band changes. Also serves Kenwood
 CAT over TCP for Hamlib / WSJT-X and publishes rig state to MQTT.
 
 **Status:** running on an S3 N16R8 — radio USB link, rig polling, Wi-Fi, TCP
-CAT and Hamlib (rigctl, TS-480 model) verified; WSJT-X and the SPE output are
+CAT, Hamlib (rigctl) and WSJT-X verified; the SPE output and PTT via CAT are
 not yet tested.
 
 ## How it works
@@ -49,8 +49,9 @@ python3 install.py     # bootstraps PlatformIO (macOS/Pi aware), verifies the bu
 
 ## PC software
 
-Hamlib / WSJT-X: rig **Kenwood TS-480**, network port
-`rgo-spe-cat.local:4533`, PTT via CAT. The RGO ONE doesn't answer `MD;`,
+Hamlib / WSJT-X: rig **Kenwood TS-480**, PTT via CAT. In WSJT-X put
+`rgo-spe-cat.local:4533` (or the IP) in the **Serial Port** field — for a
+Hamlib rig that field takes the network address. The RGO ONE doesn't answer `MD;`,
 `PS;` or `AI;`, so the TCP server answers those itself.
 
 ## MQTT
