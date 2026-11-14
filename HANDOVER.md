@@ -282,6 +282,9 @@ radio → SPE path doesn't need Wi-Fi.
 
 ## What changed
 
+- **2026-11-14** — Enclosure: S3 board measured 63.5 × 28 mm (with the
+  antenna end); the LED is just behind the USB-C sockets, so the lid has a
+  3.2 × 18 mm slot across the board there.
 - **2026-11-14** — Enclosure: wires are soldered to the S3 header pins, so
   the board sits 12 mm above the floor (clears downward headers + joints).
 - **2026-11-14** — Enclosure draft 6: real dongle sizes (28 × 29 × 11.3 mm

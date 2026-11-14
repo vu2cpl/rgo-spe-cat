@@ -58,8 +58,8 @@ lip_t         = 1.6;
 lip_clear     = 0.3;
 
 /* [ESP32-S3 board — VCC-GND YD-ESP32-S3] */
-pcb_l     = 63.5;  // CHECK (published size 63.5 × 28)
-pcb_w     = 28;    // CHECK
+pcb_l     = 63.5;  // measured, including the antenna end
+pcb_w     = 28;    // measured
 pcb_t     = 1.6;
 pcb_x0    = 9;     // board's left edge from the inner left wall
 pin_clear = 12;    // floor → board underside. Wires are soldered to the header pins;
@@ -71,9 +71,12 @@ usbc_z_above_pcb = 1.6;  // socket centre above the board's top face (CHECK)
 
 /* [Status LED window] */
 led_window = true;
-led_x = 14;        // CHECK LED position on the board, from the board's left edge
-led_y = 12;        // CHECK ... from the board's USB end
-led_d = 3.2;
+// The RGB LED sits just behind the USB-C sockets. The window is a slot across
+// the board there, so it shows whichever side the LED is on.
+led_x = 14;        // slot centre, from the board's left edge
+led_y = 10;        // slot centre, from the board's USB end
+led_d = 3.2;       // slot width
+led_slot_l = 18;   // slot length, across the board
 
 /* [USB audio dongle — jacks through the panel] */
 // Measured 2026-11-14 (black aluminium "USB Audio Adapter"): body 28 × 29 ×
@@ -236,7 +239,8 @@ module lid() {
             translate([0, 0, 1 + lid_t - (csk_d - screw_d)/2]) cylinder(d1 = screw_d, d2 = csk_d, h = (csk_d - screw_d)/2 + eps);
         }
         if (led_window)
-            translate([ix(pcb_x0 + led_x), iy(led_y), base_h - 1]) cylinder(d = led_d, h = lid_t + 2);
+            translate([ix(pcb_x0 + led_x), iy(led_y), base_h - 1])
+                hull() for (sx = [-1, 1]) translate([sx*(led_slot_l - led_d)/2, 0, 0]) cylinder(d = led_d, h = lid_t + 2);
     }
 }
 

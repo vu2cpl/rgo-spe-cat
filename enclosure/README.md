@@ -42,15 +42,14 @@ box. See `docs/BOX_PLAN.md`.
 - **PC cable notch:** a tab on the lid closes it down to cable size, so the
   USB-A plug never has to go through a hole.
 - **Lid:** 4 × M3 countersunk screws into heat-set inserts in the corner
-  posts. A 3.2 mm window sits over the status LED.
+  posts. A 3.2 × 18 mm slot sits over the status LED, just behind the USB-C
+    sockets.
 
 ## Check before printing
 
 | Parameter | Default | Measure |
 |---|---|---|
-| `pcb_l`, `pcb_w` | 63.5 × 28 | S3 board outline |
 | `usbc_z_above_pcb` | 1.6 | Height of the USB-C socket centre above the board's top face |
-| `led_x`, `led_y` | 14, 12 | Position of the RGB LED on the board |
 | `notch_w` | 6.5 | USB extension cable diameter + 1 |
 | `amp_jack_hole_d`, `amp_jack_body` | 6.2, 11 | The AMP jack's thread and body width |
 | `insert_hole_d` | 4.0 | The bore your M3 heat-set inserts need |
