@@ -282,6 +282,8 @@ radio → SPE path doesn't need Wi-Fi.
 
 ## What changed
 
+- **2026-11-14** — Enclosure: wires are soldered to the S3 header pins, so
+  the board sits 12 mm above the floor (clears downward headers + joints).
 - **2026-11-14** — Enclosure draft 6: real dongle sizes (28 × 29 × 11.3 mm
   body + 14 mm USB-A plug, jacks 12.4 mm apart at 6.35 mm up, mic on the
   left). Box

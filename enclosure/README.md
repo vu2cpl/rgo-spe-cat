@@ -49,7 +49,6 @@ box. See `docs/BOX_PLAN.md`.
 | Parameter | Default | Measure |
 |---|---|---|
 | `pcb_l`, `pcb_w` | 63.5 × 28 | S3 board outline |
-| `pin_clear` | 10 | Floor to board underside. The default assumes wires soldered to the pins. Dupont jumpers on downward pins need about 20 (raise `in_h` too) |
 | `usbc_z_above_pcb` | 1.6 | Height of the USB-C socket centre above the board's top face |
 | `led_x`, `led_y` | 14, 12 | Position of the RGB LED on the board |
 | `notch_w` | 6.5 | USB extension cable diameter + 1 |

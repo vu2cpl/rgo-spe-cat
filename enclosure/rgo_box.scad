@@ -62,8 +62,8 @@ pcb_l     = 63.5;  // CHECK (published size 63.5 × 28)
 pcb_w     = 28;    // CHECK
 pcb_t     = 1.6;
 pcb_x0    = 9;     // board's left edge from the inner left wall
-pin_clear = 10;    // CHECK floor → board underside. Wires soldered to the pins: 8-10.
-                   // Dupont jumpers on downward pins need ~20 (and raise in_h).
+pin_clear = 12;    // floor → board underside. Wires are soldered to the header pins;
+                   // 12 clears downward headers (~8.5) plus the solder joints.
 rib_w     = 8;     // support rib, between the header rows
 usbc_slot_w = 27;  // one slot over both USB-C sockets (overmolds fit side by side)
 usbc_slot_h = 7;
