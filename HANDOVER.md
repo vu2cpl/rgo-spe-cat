@@ -208,8 +208,8 @@ radio → SPE path doesn't need Wi-Fi.
 ## What changed
 
 - **2026-11-14** — Bridged the `USB-OTG` pad (back of board, behind the USB
-  socket) so the board can power the radio's USB side. Found the COM socket
-  doesn't power this board; final power is via 5Vin. Board identified as
+  socket) so the board can power the radio's USB side. The COM socket only
+  powers the board from a USB-A cable (no CC resistors on it). Board identified as
   VCC-GND YD-ESP32-S3; socket roles documented.
 
 - **2026-11-14** — First flash on a real S3 N16R8: boots, joins Wi-Fi, TCP
