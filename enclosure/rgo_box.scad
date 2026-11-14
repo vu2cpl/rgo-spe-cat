@@ -39,8 +39,8 @@
 part = "assembly";   // [assembly, base, lid, print]
 
 /* [Box] */
-in_l   = 96;   // inner length (X), along the connector panel
-in_d   = 74;    // inner depth (Y)
+in_l   = 102;   // inner length (X), along the connector panel
+in_d   = 70;    // inner depth (Y)
 in_h   = 23;    // inner height, floor top to lid underside
 wall   = 2.5;
 floor_t = 2.4;
@@ -75,26 +75,29 @@ led_x = 14;        // CHECK LED position on the board, from the board's left edg
 led_y = 12;        // CHECK ... from the board's USB end
 led_d = 3.2;
 
-/* [CM108 dongle — jacks through the panel] */
-dongle_x    = 53;    // dongle centre line, from the inner left wall
-dongle_l    = 50;    // CHECK length, jack end to the end of its USB plug
-dongle_w    = 20;    // CHECK width
-dongle_h    = 10;    // CHECK height
-jack_pitch  = 10;    // CHECK centre-to-centre of its two 1/8" jacks
-jack_z      = 5;     // CHECK jack centre above the dongle's underside
-mic_left    = true;  // CHECK mic jack on the LEFT seen from outside the panel
+/* [USB audio dongle — jacks through the panel] */
+// Measured 2026-11-14 (black aluminium "USB Audio Adapter"): body 28 × 29 ×
+// 11.3 mm + USB-A plug 14 long; jacks 16.5 apart, first 5.5 from the edge;
+// pink mic on the left looking at the jack end.
+dongle_x    = 56.5;  // dongle centre line, from the inner left wall
+dongle_l    = 43;    // length, jack end to the end of its USB plug (29 + 14)
+dongle_w    = 28;    // width
+dongle_h    = 11.3;  // height
+jack_pitch  = 16.5;  // centre-to-centre of its two 1/8" jacks
+jack_z      = 4.6;   // jack centre above the dongle's underside (CHECK: from the sketch)
+mic_left    = true;  // mic jack on the LEFT seen from outside the panel
 jack_hole_d = 8;     // fits a 1/8" plug's body through the wall
 pad_h       = 4;     // cradle floor the dongle sits on (zip tie runs through it)
 rail_t      = 2;     // cradle side rails
 cradle_clear = 0.4;
 
 /* [AMP jack — 2.5 mm TRS, panel mount] */
-amp_jack_x      = 74;    // centre, from the inner left wall
+amp_jack_x      = 80;    // centre, from the inner left wall
 amp_jack_hole_d = 6.2;   // CHECK your jack's thread (usually M6 for a panel jack)
 amp_jack_body   = 11;    // CHECK width of the jack body behind the panel
 
 /* [PC cable notch, back wall] */
-notch_x = 84;     // notch centre from the inner left wall
+notch_x = 90;     // notch centre from the inner left wall
 notch_w = 6.5;     // CHECK: your USB extension cable diameter + 1
 notch_d = 12;      // notch depth from the top of the wall
 cable_h = 6;       // hole left for the cable once the lid tab is in
@@ -102,7 +105,7 @@ cable_h = 6;       // hole left for the cable once the lid tab is in
 /* [Zip-tie anchors] */
 // [x, y, angle]: centre of each anchor on the floor; the tie runs across the anchor.
 // Default: one for the USB extension socket, behind the dongle.
-ties = [[53, 63, 0]];
+ties = [[56.5, 56, 0]];
 tie_slot_w = 4.2;  // zip-tie width + clearance
 tie_slot_h = 1.8;
 tie_block  = [12, 8, 4];   // same height as the dongle cradle floor
@@ -242,7 +245,7 @@ module ghosts() {
     %translate([ix(pcb_x0), iy(0), pcb_z]) cube([pcb_w, pcb_l, pcb_t]);
     // CM108 dongle in its cradle + the extension socket behind it
     %translate([ix(dongle_x - dongle_w/2), iy(0), floor_t + pad_h]) cube([dongle_w, dongle_l, dongle_h]);
-    %translate([ix(dongle_x - 7), iy(dongle_l - 8), floor_t + pad_h]) cube([14, 30, 8]);
+    %translate([ix(dongle_x - 7), iy(dongle_l - 10), floor_t + pad_h]) cube([14, 24, 8]);
     // AMP jack body behind the panel
     %translate([ix(amp_jack_x - amp_jack_body/2), iy(0), jack_zabs - amp_jack_body/2]) cube([amp_jack_body, 14, amp_jack_body]);
 }

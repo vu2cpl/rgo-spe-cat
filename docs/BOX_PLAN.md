@@ -1,6 +1,6 @@
 # Box plan: RGO ONE CAT + audio interface
 
-**Status: enclosure draft 5 (2026-11-14).** The model is
+**Status: enclosure draft 6 (2026-11-14).** The model is
 `enclosure/rgo_box.scad`. It is not printed yet.
 
 **Decided:**
@@ -126,9 +126,11 @@ changes when the PC is off.
 
 ## Enclosure
 
-Draft 5: 101 × 79 × 27.8 mm, OpenSCAD in `enclosure/`, to be printed on the
+Draft 6: 107 × 75 × 27.8 mm, OpenSCAD in `enclosure/`, to be printed on the
 Bambu. `enclosure/README.md` lists the values to measure before printing,
-starting with the dongle's size and jack positions.
+The dongle (black aluminium "USB Audio Adapter")
+is measured: body 28 × 29 × 11.3 mm plus a 14 mm USB plug, jacks 16.5 mm
+apart, mic (pink) on the left.
 
 If RF gets into the S3 or the audio with the amp keyed, add a copper-tape
 lining later.

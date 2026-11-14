@@ -282,6 +282,11 @@ radio → SPE path doesn't need Wi-Fi.
 
 ## What changed
 
+- **2026-11-14** — Enclosure draft 6: real dongle sizes (28 × 29 × 11.3 mm
+  body + 14 mm USB-A plug, jacks 16.5 mm apart, mic on the left). Box
+  107 × 75 × 27.8 mm. Looked at a USB-B panel lead (Pro Signal PSG03801)
+  for the PC side: works, but its 37 mm flange and 48 mm A-socket end would
+  grow the box to roughly 120 × 85 mm; kept the cable notch for now.
 - **2026-11-14** — Enclosure draft 5: amp connector is now a **2.5 mm TRS
   panel jack** (tip = GPIO17 via 220 Ω → amp 10, ring = amp 3 → divider →
   GPIO18, sleeve = GND → amp 4; amp 11 joined to 4 in the DB15 hood).
