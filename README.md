@@ -52,7 +52,7 @@ python3 install.py     # bootstraps PlatformIO (macOS/Pi aware), verifies the bu
 Hamlib / WSJT-X: rig **Kenwood TS-480**, PTT via CAT. In WSJT-X put
 `rgo-spe-cat.local:4533` (or the IP) in the **Serial Port** field — for a
 Hamlib rig that field takes the network address. The RGO ONE doesn't answer `MD;`,
-`PS;` or `AI;`, so the TCP server answers those itself.
+`FW;`, `PS;` or `AI;`, so the TCP server answers those itself.
 
 ## MQTT
 

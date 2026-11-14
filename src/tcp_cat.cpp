@@ -21,6 +21,7 @@ struct Client {
 Client g_clients[CAT_TCP_MAX_CLIENTS];
 
 void handleCmd(Client& c, const char* cmd) {
+  uint32_t t0 = millis();
   RigState s = rig::get();
   char reply[96] = {0};
   if (s.valid && !strcmp(cmd, "FA;")) {
@@ -34,6 +35,12 @@ void handleCmd(Client& c, const char* cmd) {
   } else if (!strcmp(cmd, "PS;")) {
     // Not supported by the radio; Hamlib probes it on open (1 s timeout x4).
     strlcpy(reply, s.valid ? "PS1;" : "PS0;", sizeof(reply));
+  } else if (!strcmp(cmd, "FW;")) {
+    // Filter width: the radio never answers, and Hamlib's get_mode asks for
+    // it after MD; — 4 retries of ~1 s, then WSJT-X drops the rig and
+    // reconnects every ~9 s. "0000" = no fixed width; Hamlib falls back to
+    // the mode's normal passband.
+    strlcpy(reply, "FW0000;", sizeof(reply));
   } else if (!strcmp(cmd, "AI;")) {
     strlcpy(reply, "AI0;", sizeof(reply));
   } else if (!strncmp(cmd, "AI", 2)) {
@@ -43,6 +50,10 @@ void handleCmd(Client& c, const char* cmd) {
     strlcpy(reply, "?;", sizeof(reply));   // radio not there
   }
   if (reply[0]) c.sock.print(reply);
+#if CAT_TCP_LOG
+  Serial.printf("[TCP] %s -> %s (%lu ms)\n", cmd, reply[0] ? reply : "(none)",
+                (unsigned long)(millis() - t0));
+#endif
 }
 
 void tcpTask(void*) {

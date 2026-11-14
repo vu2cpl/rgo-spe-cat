@@ -22,8 +22,8 @@
   separate config (`--rig-name=RGO`, `~/Library/Preferences/WSJT-X - RGO.ini`)
   so the main WSJT-X setup is untouched. Lag is at most WSJT-X's poll
   interval (1 s minimum); the S3 side adds ~7 ms.
-- **PTT via CAT verified 2026-11-14:** `rigctl T 1` keys the radio (IF TX
-  digit → 1), `T 0` releases it (→ 0).
+- **PTT via CAT verified 2026-11-14:** `rigctl T 1` / `T 0` and WSJT-X
+  Test PTT key and release the radio.
 - **Not yet tested:** the SPE output, MQTT (no password in `secrets.h` yet).
 - Radio facts measured on the Mac (see "Radio — measured facts" below).
 - Git: private repo [vu2cpl/rgo-spe-cat](https://github.com/vu2cpl/rgo-spe-cat), branch `master`.
@@ -134,7 +134,7 @@ state. The radio → SPE path starts before Wi-Fi and never depends on it.
 | USB link | `src/ftdi_host.*` | IDF USB host + client + driver tasks. Matches 0403:6001, forces **DTR/RTS low** first, sets 19200 8N1, no flow, 4 ms latency. Strips the 2 FTDI status bytes per IN packet into a stream buffer. Handles hot unplug/replug |
 | Rig state | `src/rig.*` | Radio task: polls `IF;` every 150 ms, parses freq / mode / TX, keeps the raw IF frame. PC commands go through one queue; a set command triggers an immediate re-poll. State goes invalid after 1.5 s without a good reply |
 | SPE output | `src/spe.*` | UART1 Kenwood emulation. Answers `FA;` `IF;` `AI;` `ID;` from cache; pushes `FA…;` on change plus a 2 s keepalive. **Fail-safe:** sends nothing while state is invalid |
-| TCP CAT | `src/tcp_cat.*` | Port 4533, up to 3 clients. `FA;`/`IF;` from cache. Answered locally for Hamlib: `MD;` (mode digit from the cached IF), `PS;` → `PS1;`, `AI;` → `AI0;`; `AI` set commands are absorbed, never sent to the radio. Everything else forwarded to the radio via the queue; replies `?;` if the radio is absent |
+| TCP CAT | `src/tcp_cat.*` | Port 4533, up to 3 clients. `FA;`/`IF;` from cache. Answered locally for Hamlib: `MD;` (mode digit from the cached IF), `FW;` → `FW0000;`, `PS;` → `PS1;`, `AI;` → `AI0;`; `AI` set commands are absorbed, never sent to the radio. Everything else forwarded to the radio via the queue; replies `?;` if the radio is absent |
 | Main | `src/main.cpp` | WiFiManager (no restart on portal timeout — would cut the SPE feed), MQTT, ArduinoOTA, RGB status LED |
 
 Tunables are in `include/config.h` (baud rates, pins, poll/stale timings,
@@ -225,6 +225,11 @@ radio → SPE path doesn't need Wi-Fi.
   reply to `PS;` or `AI;`. Hamlib's TS-480 backend sends all three, so
   `get_mode` failed with "Protocol error" and the open took ~7 s of
   timeouts. The TCP server now answers these locally (see Firmware design).
+  `FW;` (filter width) gets no reply either. WSJT-X asks for it on every
+  poll after `MD;`, so it timed out 4 × ~1 s, declared a rig failure and
+  reconnected every ~9 s ("Test CAT goes green, then fails"). Answered
+  locally as `FW0000;`. Set `CAT_TCP_LOG 1` in `config.h` to log every TCP
+  command, reply and time on the console when chasing the next one.
   It also absorbs `AI1;`/`AI2;`: auto-info would make the radio send
   unsolicited frames and break the poll.
 - **Wi-Fi modem-sleep adds up to ~200 ms per reply.** The ESP32 default
@@ -245,6 +250,11 @@ radio → SPE path doesn't need Wi-Fi.
   radio's DTR/RTS PTT/key setting before probing.
 
 ## What changed
+
+- **2026-11-14** — **WSJT-X stays connected; Test PTT works.** The radio
+  never answers `FW;`; WSJT-X timed out on it and reconnected every ~9 s.
+  The TCP server now answers `FW0000;`. Added `CAT_TCP_LOG` (off by
+  default) to log TCP commands with reply and timing; it found this one.
 
 - **2026-11-14** — PTT via CAT verified over TCP (`rigctl T 1` / `T 0`; the
   radio's IF TX digit follows). WSJT-X lag measured: bounded by its 1 s

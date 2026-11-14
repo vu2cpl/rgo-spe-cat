@@ -43,6 +43,7 @@
 // Hamlib: model TS-480 (2028), rig path "rgo-spe-cat.local:4533".
 #define CAT_TCP_PORT       4533
 #define CAT_TCP_MAX_CLIENTS 3
+#define CAT_TCP_LOG        0     // 1 = log every TCP command, reply and time on the console
 
 // ── MQTT broker (shack) ───────────────────────────────────
 // Broker requires auth (since 2026-08-21). Role account + password come from
