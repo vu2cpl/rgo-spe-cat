@@ -4,30 +4,32 @@
 // LID with a locating lip. 4 × M3 screws go down through the lid into M3
 // heat-set inserts in the base corner posts.
 //
-// Layout (looking down, back wall at the bottom of the picture):
+// Layout (looking down). ALL connectors are on ONE panel — the back wall:
 //
 //     ┌───────────────────────────────────────────┐
 //     │ ●                                       ● │
-//     │   ┌──────┐                              ══ DB15 FEMALE  (SPE amp)
-//     │   │  S3  │       [ CM108 dongle ]          │
-//     │   │board │                              ══ DB15 MALE    (radio ACC1)
-//     │   └──────┘        [ USB ext socket ]       │
-//     │ ●   ▀▀▀▀                     ▀▀        ● │
-//     └─────USB-C x2 ─────────────────── cable ────┘
-//         (COM = power,                notch (PC)
-//          native = radio)
+//     │                [ ext  ]                   │
+//     │   ┌──────┐     [socket]                   │
+//     │   │  S3  │     [CM108 ]                   │
+//     │   │board │     [dongle]                   │
+//     │ ● └──────┘     [      ]                 ● │
+//     └───USB-C x2─────IN──OUT──────DB15 F───cable─┘
+//        RIG  PWR     1/8" jacks    AMP     PC notch
 //
-// - S3 board: its two USB-C sockets poke into one slot in the back wall, so
-//   the radio and charger cables plug straight into the board. It sits on a
-//   rib between its header rows (foam tape), with a stop block behind it so
-//   plugging a cable can't push it back.
-// - CM108 dongle and the USB extension's socket: held down by zip-tie anchors.
-// - PC cable leaves through a notch at the top of the back wall; the lid has a
-//   tab that closes the notch down to cable size, so the USB-A plug never has
-//   to pass through a hole.
-// - Both DB15s on the right end wall, opposite genders (can't be swapped),
-//   labelled RADIO and AMP. The wall is thinned around them so the jack
-//   screws reach.
+// - S3 board: its two USB-C sockets poke into one slot, so the radio and
+//   charger cables plug straight into the board. It sits on a rib between
+//   its header rows (foam tape), with a stop block behind it so plugging a
+//   cable can't push it back.
+// - CM108 dongle: lies in a cradle with its jack end against the panel; its
+//   own mic (IN) and headphone (OUT) jacks show through two holes. The radio
+//   cable (DB15 plug on ACC1, resistors in its hood, two 1/8" plugs) plugs in
+//   there. A zip tie through the cradle holds it. The USB extension socket
+//   sits behind it on a zip-tie anchor.
+// - DB15 female (SPE amp): the wall is thinned around it so the jack screws
+//   reach.
+// - PC cable leaves through a notch at the top of the panel; the lid has a
+//   tab that closes it down to cable size, so the USB-A plug never has to
+//   pass through a hole.
 //
 // Values marked CHECK are from datasheets / guesses: measure your parts and
 // change them before printing. part = "assembly" shows ghost parts.
@@ -36,8 +38,8 @@
 part = "assembly";   // [assembly, base, lid, print]
 
 /* [Box] */
-in_l   = 120;   // inner length (X)
-in_d   = 100;   // inner depth (Y)
+in_l   = 132;   // inner length (X), along the connector panel
+in_d   = 78;    // inner depth (Y)
 in_h   = 32;    // inner height, floor top to lid underside
 wall   = 2.5;
 floor_t = 2.4;
@@ -72,7 +74,20 @@ led_x = 14;        // CHECK LED position on the board, from the board's left edg
 led_y = 12;        // CHECK ... from the board's USB end
 led_d = 3.2;
 
-/* [DB15 (DA-15, shell size A) on the right end wall] */
+/* [CM108 dongle — jacks through the panel] */
+dongle_x    = 58;    // dongle centre line, from the inner left wall
+dongle_l    = 50;    // CHECK length, jack end to the end of its USB plug
+dongle_w    = 20;    // CHECK width
+dongle_h    = 10;    // CHECK height
+jack_pitch  = 10;    // CHECK centre-to-centre of its two 1/8" jacks
+jack_z      = 5;     // CHECK jack centre above the dongle's underside
+mic_left    = true;  // CHECK mic jack on the LEFT seen from outside the panel
+jack_hole_d = 8;     // fits a 1/8" plug's body through the wall
+pad_h       = 4;     // cradle floor the dongle sits on (zip tie runs through it)
+rail_t      = 2;     // cradle side rails
+cradle_clear = 0.4;
+
+/* [DB15 (DA-15, shell size A) for the SPE amp] */
 db_hole_pitch = 33.32;   // jack-screw hole spacing (standard)
 db_hole_d     = 3.2;
 db_cut_top    = 26.4;    // D cutout, wide edge (with clearance)
@@ -80,23 +95,23 @@ db_cut_h      = 10.6;
 db_angle      = 10;      // D side angle
 db_flange_w   = 39.1;
 db_flange_h   = 12.6;
-db_panel_t    = 1.6;     // wall thinned to this around each D (jack screws reach)
+db_panel_t    = 1.6;     // wall thinned to this around the D (jack screws reach)
 db_z          = 14;      // connector centre above the floor top
-db_radio_y    = 27;      // DB15 MALE  → radio ACC1
-db_amp_y      = 73;      // DB15 FEMALE → SPE amp
+db_amp_x      = 94;      // DB15 FEMALE → SPE amp (centre, from inner left wall)
 
 /* [PC cable notch, back wall] */
-notch_x = 100;     // notch centre from the inner left wall
+notch_x = 119;     // notch centre from the inner left wall
 notch_w = 6.5;     // CHECK: your USB extension cable diameter + 1
 notch_d = 12;      // notch depth from the top of the wall
 cable_h = 6;       // hole left for the cable once the lid tab is in
 
 /* [Zip-tie anchors] */
 // [x, y, angle]: centre of each anchor on the floor; the tie runs across the anchor.
-ties = [[60, 60, 0], [85, 60, 0], [95, 22, 0]];
+// Default: one for the USB extension socket, behind the dongle.
+ties = [[58, 66, 0]];
 tie_slot_w = 4.2;  // zip-tie width + clearance
 tie_slot_h = 1.8;
-tie_block  = [6, 12, 4];
+tie_block  = [12, 8, 4];   // same height as the dongle cradle floor
 
 $fn = 48;
 eps = 0.01;
@@ -106,6 +121,10 @@ out_d = in_d + 2*wall;
 base_h = floor_t + in_h;
 pcb_z  = floor_t + pin_clear;       // board underside
 usbc_z = pcb_z + pcb_t + usbc_z_above_pcb;
+jack_zabs = floor_t + pad_h + jack_z;
+in_jack_x  = dongle_x + (mic_left ? -1 : 1) * jack_pitch/2;
+out_jack_x = dongle_x - (mic_left ? -1 : 1) * jack_pitch/2;
+cradle_w = dongle_w + 2*cradle_clear;
 
 // inner coordinates → base coordinates
 function ix(x) = wall + x;
@@ -120,37 +139,56 @@ module rbox(l, d, h, r) {
 }
 
 // ---------- cutouts ----------
-module dsub_cut(y) {
+module dsub_cut(x) {
     bot = db_cut_top - 2 * db_cut_h * tan(db_angle);
-    // through the wall
-    translate([out_l - wall - 1, iy(y), floor_t + db_z]) rotate([90, 0, 90])
+    // through the wall (wide edge of the D at the top)
+    translate([ix(x), wall + 1, floor_t + db_z]) rotate([90, 0, 0])
         linear_extrude(wall + 2) polygon([[-db_cut_top/2,  db_cut_h/2], [db_cut_top/2,  db_cut_h/2],
                                            [ bot/2,       -db_cut_h/2], [-bot/2,       -db_cut_h/2]]);
     for (s = [-1, 1])
-        translate([out_l - wall - 1, iy(y) + s*db_hole_pitch/2, floor_t + db_z])
-            rotate([0, 90, 0]) cylinder(d = db_hole_d, h = wall + 2);
+        translate([ix(x) + s*db_hole_pitch/2, -1, floor_t + db_z])
+            rotate([-90, 0, 0]) cylinder(d = db_hole_d, h = wall + 2);
     // thin the wall from inside around the connector
-    translate([out_l - wall - eps, iy(y) - (db_flange_w + 4)/2, floor_t + db_z - (db_flange_h + 4)/2])
-        cube([wall - db_panel_t + eps, db_flange_w + 4, db_flange_h + 4]);
+    translate([ix(x) - (db_flange_w + 4)/2, db_panel_t, floor_t + db_z - (db_flange_h + 4)/2])
+        cube([db_flange_w + 4, wall - db_panel_t + eps, db_flange_h + 4]);
+}
+
+module panel_text(x, z, t, sz = 4) {
+    translate([ix(x), 0.6, z]) rotate([90, 0, 0]) linear_extrude(1)
+        text(t, size = sz, halign = "center", valign = "center", font = "Liberation Sans:style=Bold");
 }
 
 module labels() {
-    for (l = [[db_radio_y, "RADIO"], [db_amp_y, "AMP"]])
-        translate([out_l - 0.6, iy(l[0]), floor_t + db_z + db_flange_h/2 + 5])
-            rotate([90, 0, 90]) linear_extrude(1)
-                text(l[1], size = 5, halign = "center", valign = "center", font = "Liberation Sans:style=Bold");
-    translate([ix(pcb_x0 + pcb_w/2), 0.6, usbc_z - usbc_slot_h/2 - 5])
-        rotate([90, 0, 0]) linear_extrude(1)
-            text("RIG    PWR", size = 3.5, halign = "center", valign = "center", font = "Liberation Sans:style=Bold");
-    translate([ix(notch_x), 0.6, base_h - notch_d - 5])
-        rotate([90, 0, 0]) linear_extrude(1)
-            text("PC", size = 4, halign = "center", valign = "center", font = "Liberation Sans:style=Bold");
+    panel_text(db_amp_x, floor_t + db_z + db_flange_h/2 + 4.5, "AMP");
+    panel_text(in_jack_x,  jack_zabs + jack_hole_d/2 + 4, "IN", 3.5);
+    panel_text(out_jack_x, jack_zabs + jack_hole_d/2 + 4, "OUT", 3.5);
+    panel_text(pcb_x0 + pcb_w/2, usbc_z + usbc_slot_h/2 + 4.5, "RIG    PWR", 3.5);
+    panel_text(notch_x, base_h - notch_d - 5, "PC");
 }
 
 module usbc_slot() {
     translate([ix(pcb_x0 + pcb_w/2), -1, usbc_z]) rotate([-90, 0, 0])
         hull() for (s = [-1, 1]) translate([s*(usbc_slot_w - usbc_slot_h)/2, 0, 0])
             cylinder(d = usbc_slot_h, h = wall + 2);
+}
+
+module jack_holes() {
+    for (x = [in_jack_x, out_jack_x])
+        translate([ix(x), -1, jack_zabs]) rotate([-90, 0, 0]) cylinder(d = jack_hole_d, h = wall + 2);
+}
+
+// Dongle cradle: a floor pad with a zip-tie tunnel across it, and side rails.
+module cradle() {
+    translate([ix(dongle_x - cradle_w/2), iy(0), floor_t - eps]) difference() {
+        cube([cradle_w, dongle_l, pad_h]);
+        translate([-1, dongle_l/2 - tie_slot_w/2, 1]) cube([cradle_w + 2, tie_slot_w, tie_slot_h]);
+    }
+    for (sx = [-1, 1])
+        translate([ix(dongle_x + sx*(cradle_w/2 + rail_t/2) - rail_t/2), iy(0), floor_t - eps])
+            difference() {
+                cube([rail_t, dongle_l, pad_h + dongle_h*0.6]);
+                translate([-1, dongle_l/2 - tie_slot_w/2, 1]) cube([rail_t + 2, tie_slot_w, tie_slot_h]);
+            }
 }
 
 module notch() {
@@ -179,13 +217,14 @@ module base() {
             translate([ix(pcb_x0 + pcb_w/2 - rib_w/2), iy(6), 0]) cube([rib_w, pcb_l - 12, pcb_z]);
             // stop block behind the board's far end
             translate([ix(pcb_x0 + pcb_w/2 - 6), iy(pcb_l + 0.4), 0]) cube([12, 4, pcb_z + pcb_t + 2]);
+            cradle();
             for (t = ties) tie_anchor(t);
         }
         for (p = posts) translate([ix(p[0]), iy(p[1]), base_h - insert_depth]) cylinder(d = insert_hole_d, h = insert_depth + 1);
         usbc_slot();
         notch();
-        dsub_cut(db_radio_y);
-        dsub_cut(db_amp_y);
+        jack_holes();
+        dsub_cut(db_amp_x);
         labels();
     }
 }
@@ -221,16 +260,20 @@ module lid() {
 module ghosts() {
     // S3 board
     %translate([ix(pcb_x0), iy(0), pcb_z]) cube([pcb_w, pcb_l, pcb_t]);
-    // CM108 dongle (CHECK ~ 50 × 20 × 10 incl. USB plug) + extension socket
-    %translate([ix(48), iy(55), floor_t + 4]) cube([50, 20, 10]);
-    %translate([ix(80), iy(15), floor_t + 4]) cube([30, 14, 8]);
-    // DB15 flanges outside the end wall
-    for (y = [db_radio_y, db_amp_y])
-        %translate([out_l, iy(y) - db_flange_w/2, floor_t + db_z - db_flange_h/2]) cube([1, db_flange_w, db_flange_h]);
+    // CM108 dongle in its cradle + the extension socket behind it
+    %translate([ix(dongle_x - dongle_w/2), iy(0), floor_t + pad_h]) cube([dongle_w, dongle_l, dongle_h]);
+    %translate([ix(dongle_x - 7), iy(dongle_l - 8), floor_t + pad_h]) cube([14, 30, 8]);
+    // DB15 flange outside the panel
+    %translate([ix(db_amp_x) - db_flange_w/2, -1, floor_t + db_z - db_flange_h/2]) cube([db_flange_w, 1, db_flange_h]);
 }
 
 echo(str("Outer size: ", out_l, " × ", out_d, " × ", base_h + lid_t, " mm"));
-assert(db_amp_y - db_radio_y >= db_flange_w + 2, "DB15 flanges overlap");
+assert(dongle_x - cradle_w/2 - rail_t >= pcb_x0 + pcb_w + 3, "dongle cradle hits the S3 board");
+assert(dongle_x - cradle_w/2 - rail_t >= pcb_x0 + pcb_w/2 + usbc_slot_w/2 + 3, "jack holes crowd the USB-C slot");
+assert(db_amp_x - db_flange_w/2 >= dongle_x + cradle_w/2 + rail_t + 2, "AMP DB15 hits the dongle cradle");
+assert(dongle_l + 22 <= in_d, "no room behind the dongle for the extension socket");
+assert(notch_x - notch_w/2 >= db_amp_x + db_flange_w/2 + 2, "cable notch hits the AMP DB15");
+assert(notch_x + notch_w/2 <= in_l - post_d, "cable notch hits a corner post");
 assert(db_z + db_flange_h/2 <= in_h - lip_h, "DB15 hits the lid lip");
 assert(pcb_x0 >= post_d, "board clashes with a corner post");
 

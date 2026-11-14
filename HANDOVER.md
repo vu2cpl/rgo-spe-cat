@@ -282,6 +282,12 @@ radio → SPE path doesn't need Wi-Fi.
 
 ## What changed
 
+- **2026-11-14** — Enclosure draft 2: all connectors on ONE panel (RIG/PWR
+  USB-C slot, IN/OUT = the CM108's own 1/8" jacks through the wall, AMP
+  DB15 female, PC cable notch). The radio panel DB15 is gone: radio audio is
+  now a separate cable (DB15 male on ACC1 with the 3 resistors in its hood →
+  two 1/8" plugs), only 3 wires. 137 × 83 × 36.8 mm; dongle sizes still
+  `CHECK`.
 - **2026-11-14** — Enclosure first draft: `enclosure/rgo_box.scad` (125 ×
   105 × 36.8 mm, base + screw-down lid, M3 heat-set inserts). S3 USB-Cs
   through a back-wall slot, PC cable through a notch the lid closes, both
