@@ -23,8 +23,10 @@ a stale band.
 
 - ESP32-S3 N16R8 board. Native USB port → radio's USB-B (OTG port must supply
   5 V on VBUS). Flash and monitor via the board's COM port.
-- GPIO17 → SPE CAT in, GPIO18 ← SPE CAT out (only if the amp polls; check its
-  voltage first), GND ↔ SPE ground.
+- SPE Expert 1.5K-FA CAT connector (DB15 male plug, 5 V TTL Kenwood):
+  GPIO17 → pin 10 (RX TTL), GND ↔ pin 4, pin 11 (KEN TTL) → GND.
+  Optional for the amp's polls: pin 3 (TX TTL, 5 V) → resistor divider → GPIO18
+  (the S3 is not 5 V tolerant). See `HANDOVER.md` for polled vs listen-only.
 
 ## Quick start
 
@@ -40,7 +42,8 @@ python3 install.py     # bootstraps PlatformIO (macOS/Pi aware), verifies the bu
 2. Copy `include/secrets.h.example` → `include/secrets.h` and set the MQTT role
    password (from the shack password manager) and an OTA password.
    `secrets.h` is git-ignored.
-3. Set `SPE_BAUD` in `include/config.h` to match the amp's CAT setting.
+3. On the amp: SET → CAT → KENWOOD, baud 9600 (or set `SPE_BAUD` in
+   `include/config.h` to match), then power-cycle the amp.
 
 ## PC software
 

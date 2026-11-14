@@ -28,10 +28,12 @@
 #define RADIO_STALE_MS     1500    // no good reply for this long → rig state invalid
 
 // ── SPE amplifier: Kenwood emulation on UART1 (direct TTL) ─
-// SPE CAT baud is an open item — set it to match the amp's CAT menu.
+// Expert 1.5K-FA, DB15 CAT connector (manual rev 3.2 §12.1/12.3): 5 V TTL
+// Kenwood, pin 11 (KEN TTL) tied to GND. Amp baud: SET → CAT → KENWOOD →
+// baud (manual: "almost always 9600"); power-cycle the amp after changing it.
 #define SPE_UART_NUM       1
-#define SPE_TX_PIN         17      // S3 TX → SPE CAT in
-#define SPE_RX_PIN         18      // SPE CAT out → S3 RX (only if the amp polls; check its voltage first)
+#define SPE_TX_PIN         17      // S3 TX → DB15 pin 10 (RX TTL)
+#define SPE_RX_PIN         18      // DB15 pin 3 (TX TTL, 5 V!) → divider → S3 RX. Optional: amp's polls
 #define SPE_BAUD           9600
 #define SPE_PUSH_FA        1       // push unsolicited FA…; on every frequency change
 #define SPE_PUSH_IF        0       // also push IF…; frames (Kenwood AI-style), if the amp wants them

@@ -61,9 +61,30 @@ the amp so the SPE follows band changes automatically.
 | --- | --- | --- | --- |
 | USB CAT | S3 native USB port (host) | RGO ONE USB Type B | USB-C to USB-B cable. OTG port must supply 5 V on VBUS: set the board's jumper/solder pad or feed 5 V in |
 | Console / flashing | S3 "COM" port (UART0 bridge) | Mac | The native port is busy as USB host, so flash and monitor via COM |
-| SPE TX data | S3 GPIO17 (UART1 TX, 3.3 V) | SPE CAT input | Usually reads fine at 3.3 V; add a 74AHCT125 buffer if the amp misses characters |
-| SPE RX data | SPE CAT output | S3 GPIO18 (UART1 RX) | Only if the amp polls. Measure first: 5 V needs a divider, RS-232 ±12 V needs a proper level shifter. Leave unconnected if the amp only listens |
-| Ground | S3 GND | SPE ground | Required |
+| SPE TX data | S3 GPIO17 (UART1 TX, 3.3 V) | SPE DB15 pin 10 (RX TTL) | Amp input is 5 V TTL. 3.3 V high is above standard TTL V<sub>IH</sub> (2.0 V) so it should read; add a 74AHCT125 buffer if the amp misses characters |
+| SPE RX data | SPE DB15 pin 3 (TX TTL, **5 V**) | S3 GPIO18 (UART1 RX) | Optional — carries the amp's polls. **Needs a divider** (e.g. 10 k / 20 k): the S3 is not 5 V tolerant. Leave unconnected for listen-only mode |
+| TTL select | SPE DB15 pin 11 (KEN TTL) | GND | Selects the 5 V TTL Kenwood interface instead of RS-232 (pins 1/9) |
+| Ground | S3 GND | SPE DB15 pin 4 (GND) | Required |
+
+The SPE CAT connector (one per exciter input, IN 1 / IN 2) takes a **DB15
+male** cable plug. Pinout from the Expert 1.5K-FA manual rev 3.2 §12.1.
+
+### SPE CAT behaviour (manual rev 3.2, §11 "CAT", §12.3, §14)
+
+- **Kenwood mode:** set SET → CAT → KENWOOD, then the baud (manual: "almost
+  always 9600"). Power-cycle the amp after any CAT change. Check with SET →
+  MANUAL TUNE.
+- **Two ways to wire it**, both supported by the firmware:
+  - *Polled* (two wires, the amp's standard direct mode): the amp interrogates
+    the radio cyclically on pin 3; the ESP32 answers `FA;` / `IF;`. Needs the
+    5 V → 3.3 V divider on GPIO18.
+  - *Listen-only* (one wire, as in SPE's "transceiver controlled by PC" §14):
+    only pin 10 + GND, pin 3 left open; the amp "analyzes only the data
+    exchanged". The ESP32's unsolicited `FA…;` pushes and 2 s keepalive feed it.
+    No 5 V reaches the S3. Consider `SPE_PUSH_IF 1` here, in case the amp
+    parses `IF` frames rather than `FA`.
+- The manual doesn't say which Kenwood commands the amp sends when polling;
+  sniff pin 3 to confirm (expect `FA;` or `IF;`).
 
 RF hardening: shielded enclosure, ferrites on the USB, CAT and power leads.
 The radio runs 100 W with the SPE close by.
@@ -121,8 +142,9 @@ radio → SPE path doesn't need Wi-Fi.
 - [x] ~~RGO ONE USB-serial chip VID/PID~~ — FT232R 0403:6001
 - [x] ~~RGO ONE CAT baud rate~~ — 19200
 - [x] ~~Confirm the RGO ONE's CAT command set~~ — TS-480 style (`ID;` unsupported)
-- [ ] Does the SPE poll the radio or only listen? Its CAT baud setting? (`SPE_BAUD` is a 9600 placeholder)
-- [ ] SPE CAT output voltage, if it polls
+- [x] ~~Does the SPE poll or only listen? Baud?~~ — polls in direct Kenwood mode; listen-only also supported. Baud set in SET → CAT, default 9600 (manual rev 3.2)
+- [x] ~~SPE CAT output voltage~~ — 5 V TTL (pin 3); divider needed if wired
+- [ ] Choose polled vs listen-only wiring; confirm which query the amp sends (sniff pin 3)
 - [ ] How the S3 board enables 5 V on the OTG port's VBUS
 - [ ] Set `OTA_PASS` in `secrets.h` before the box goes into the shack
 - [ ] Optional: small status web page (deferred; MQTT + LED cover it for now)
@@ -133,7 +155,8 @@ radio → SPE path doesn't need Wi-Fi.
    monitor shows `[USB] FTDI ready` and `[RIG] … Hz` lines tracking the VFO.
 2. Test TCP CAT with Hamlib (`rigctl -m 2028 -r rgo-spe-cat.local:4533 f`)
    and WSJT-X.
-3. Close the SPE open items, set `SPE_BAUD`, wire the amp, bench test with the
+3. Make the DB15 cable (pins 10, 4, 11→GND, optional 3 via divider), check the
+   amp's CAT baud matches `SPE_BAUD`, bench test with the
    amp in standby before keying up.
 
 ## Known gotchas
@@ -146,6 +169,10 @@ radio → SPE path doesn't need Wi-Fi.
   radio's DTR/RTS PTT/key setting before probing.
 
 ## What changed
+
+- **2026-11-14** — SPE side pinned down from the Expert 1.5K-FA manual rev 3.2:
+  DB15 pinout, 5 V TTL Kenwood (KEN TTL to GND), polled vs listen-only
+  wiring, baud menu (default 9600). Wiring table and config comments updated.
 
 - **2026-11-14** — Project scaffolded (shack ESP template) and the original
   design handover merged in. Radio probed: FT232R, 19200, TS-480 set. Full
