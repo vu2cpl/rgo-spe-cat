@@ -89,6 +89,20 @@ male** cable plug. Pinout from the Expert 1.5K-FA manual rev 3.2 §12.1.
 - The manual doesn't say which Kenwood commands the amp sends when polling;
   sniff pin 3 to confirm (expect `FA;` or `IF;`).
 
+**Board = VCC-GND YD-ESP32-S3 (N16R8).** Seen from the front with the
+sockets at the top: left USB-C = **COM** (CH343, console), right USB-C =
+**USB** (native, → radio). Power, measured 2026-11-14:
+- The **COM socket does not power the board** (no LEDs with a known-good
+  cable), contrary to the V1.4 schematic. It also needs the board powered
+  from elsewhere to enumerate.
+- `USB-OTG` is **bridged**, so the board's 5 V rail is on the USB socket's
+  VBUS — that is what powers the radio's FT232R side. Consequence: never
+  connect the USB socket to a Mac/PC while 5Vin is also fed (two supplies
+  tied with no diode). On the bench with the Mac on the USB socket as the
+  only supply, it's fine.
+- In service: 5 V into the **5Vin** pin; USB socket → radio; COM → Mac only
+  when a log is wanted.
+
 RF hardening: shielded enclosure, ferrites on the USB, CAT and power leads.
 The radio runs 100 W with the SPE close by.
 
@@ -163,7 +177,8 @@ radio → SPE path doesn't need Wi-Fi.
 - [x] ~~Does the SPE poll or only listen? Baud?~~ — polls in direct Kenwood mode; listen-only also supported. Baud set in SET → CAT, default 9600 (manual rev 3.2)
 - [x] ~~SPE CAT output voltage~~ — 5 V TTL (pin 3); divider needed if wired
 - [ ] Choose polled vs listen-only wiring; confirm which query the amp sends (sniff pin 3)
-- [ ] How the S3 board enables 5 V on the OTG port's VBUS
+- [x] ~~How the S3 board enables 5 V on the OTG port's VBUS~~ — `USB-OTG` solder jumper on the back, behind the USB socket; bridged 2026-11-14 (it bypasses the diode between the native port's VBUS and the 5 V rail)
+- [ ] Final power feed: 5 V into the **5Vin** header pin (the COM socket does not power this board — see "Hardware and wiring")
 - [ ] Set `OTA_PASS` in `secrets.h` before the box goes into the shack
 - [ ] Optional: small status web page (deferred; MQTT + LED cover it for now)
 
@@ -188,6 +203,11 @@ radio → SPE path doesn't need Wi-Fi.
   radio's DTR/RTS PTT/key setting before probing.
 
 ## What changed
+
+- **2026-11-14** — Bridged the `USB-OTG` pad (back of board, behind the USB
+  socket) so the board can power the radio's USB side. Found the COM socket
+  doesn't power this board; final power is via 5Vin. Board identified as
+  VCC-GND YD-ESP32-S3; socket roles documented.
 
 - **2026-11-14** — First flash on a real S3 N16R8: boots, joins Wi-Fi, TCP
   CAT answers. `platformio.ini` now sets flash size for build and upload
