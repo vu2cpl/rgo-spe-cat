@@ -67,7 +67,7 @@ pin_clear = 12;    // floor → board underside. Wires are soldered to the heade
 rib_w     = 8;     // support rib, between the header rows
 usbc_slot_w = 27;  // one slot over both USB-C sockets (overmolds fit side by side)
 usbc_slot_h = 7;
-usbc_z_above_pcb = 1.6;  // socket centre above the board's top face (CHECK)
+usbc_z_above_pcb = 1.55; // socket centre above the board's top face (measured: 3.1 tall)
 
 /* [Status LED window] */
 led_window = true;
