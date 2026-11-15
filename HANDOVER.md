@@ -307,6 +307,12 @@ radio → SPE path doesn't need Wi-Fi.
 
 ## What changed
 
+- **2026-11-15** — **Repo made public** (Manoj: scrub IPs, then public).
+  Shack addresses moved to the git-ignored `secrets.h` (`MQTT_HOST`,
+  `OTA_HOST`) first; older commits still hold private-range LAN IPs, no
+  passwords. Added to vu2cpl.com (Shack Firmware & Field Devices, top
+  card). A self-contained write-up for the RGO ONE group was generated
+  (kept outside the repo).
 - **2026-11-15** — **SPE CAT cable wired through the new box and tested:
   working** (Manoj). Box now fully in service: radio CAT, RX/TX audio, RTS
   PTT, SPE follow. As-built wiring diagram added: `docs/wiring.svg`, shown
