@@ -42,8 +42,8 @@
   ON, menu 02 LINE IN ON, VOX off; WSJT-X PTT Method = CAT.** The first RTS
   test gave no audio only because menu 02 LINE IN was off (the radio then
   used the hand mic); not a radio limitation. Whether the extra CAT TX
-  (`PTT_ALSO_CAT`) is needed is untested. VOX also works as a fallback. **Use VOX; keep menu 33 OFF.** Open
-  question for RGO: does LINE IN work with RTS/CAT PTT at all?
+  (`PTT_ALSO_CAT`) is needed is untested. VOX also works as a
+  fallback.
 - **MQTT 2026-11-14:** logs in to the broker as `iot` (broker log: `New
   client connected … as rgo-spe-cat (u'iot')`). The broker ACL gained
   `topic write shack/rgo-spe-cat/#` under `user iot` (see
