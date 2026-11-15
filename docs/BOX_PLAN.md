@@ -25,7 +25,8 @@
 PTT was planned on **CAT**, but the RGO ONE ignores CAT `TX;` for real
 transmit (shows TX, no RF; found 2026-11-15). **In use: VOX** — radio menu
 10 VOX GAIN on, WSJT-X PTT Method = VOX; radio and amp key correctly.
-Possible later option: USB RTS PTT from the box firmware (menu 33), see HANDOVER. No PTT wire is needed,
+USB RTS PTT (menu 33) was tried: it keys the radio but LINE IN audio is
+not passed, so keep menu 33 OFF (see HANDOVER). No PTT wire is needed,
 and no GPIO hack on the CM108.
 
 ## Panel (front wall, left to right from outside)

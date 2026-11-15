@@ -34,10 +34,16 @@
   still does frequency/mode). Tune keys the radio with RF out and the amp
   keys. Caution: any sound sent to the USB Audio Device keys the
   transmitter. The manual's PC PTT route is the USB **RTS** line
-  (menu 33). Possible later fix instead of VOX (not started, deferred by Manoj): box firmware
-  raises FTDI RTS on `TX…;`, drops it on `RX;`, with a fail-safe timeout
-  and drop on client disconnect; radio menu 33 = ON; test polarity into a
-  dummy load.
+  (menu 33). **RTS PTT tried 2026-11-15 — keys the radio but no LINE IN
+  audio.** Firmware now has it (`RADIO_PTT_RTS`, `PTT_ALSO_CAT` in
+  config.h): `TX…;` from a TCP client raises FTDI RTS (and also goes to the
+  radio as CAT), `RX;` drops it; fail-safes drop RTS on client disconnect,
+  radio USB loss and after 3 min. With menu 33 ON the radio keys on RTS
+  (polarity: RTS asserted = TX, as configured), but neither RTS alone nor
+  RTS + CAT TX passes ACC1 LINE IN audio, so no power. The mic/line choice
+  is made by the radio CPU (SSB gen U4 HEF4053, `MICS` line, supplement
+  p. 36); only VOX selects LINE IN. **Use VOX; keep menu 33 OFF.** Open
+  question for RGO: does LINE IN work with RTS/CAT PTT at all?
 - **MQTT 2026-11-14:** logs in to the broker as `iot` (broker log: `New
   client connected … as rgo-spe-cat (u'iot')`). The broker ACL gained
   `topic write shack/rgo-spe-cat/#` under `user iot` (see
@@ -196,7 +202,8 @@ red = no radio on USB · blinking blue = no Wi-Fi.
 ./monitor.sh            # serial monitor
 ```
 
-OTA after first flash: `pio run -t upload --upload-port rgo-spe-cat.local`.
+OTA after first flash: `./ota.sh` (box on IoT VLAN; the UniFi rule allows
+its call-back to the Mac on TCP 48266 only).
 
 **First flash / no COM port (what worked 2026-11-14):** unplug everything,
 hold BOOT, plug the *native* USB port into the Mac, release BOOT. The board
@@ -296,6 +303,10 @@ radio → SPE path doesn't need Wi-Fi.
 
 ## What changed
 
+- **2026-11-15** — PTT: CAT TX is display-only; RTS PTT (new firmware,
+  flashed by OTA) keys the radio but LINE IN audio isn't passed; VOX works
+  and is in use. OTA now via `./ota.sh` (call-back pinned to TCP 48266;
+  Manoj added 192.168.30.191 to the UniFi IoT → Mac OTA rule).
 - **2026-11-15** — Draft-7 box printed and installed. Radio CAT through it
   verified (TCP 4533: `FA` 7.0278 MHz LSB, `FB` live). **RX audio far too
   low** (WSJT-X ~0 dB at full Mac input gain): the 10 k / 1 k divider was

@@ -48,6 +48,19 @@
 #define CAT_TCP_MAX_CLIENTS 3
 #define CAT_TCP_LOG        0     // 1 = log every TCP command, reply and time on the console
 
+// ── PTT via the radio's USB RTS line ──────────────────────
+// The RGO ONE's CAT "TX;" only shows TX: no RF, no amp key, ACC1 audio not
+// passed (found 2026-11-15). Real PTT from a PC is the USB RTS line, radio
+// menu 33 = ON. With RADIO_PTT_RTS 1, TX;/TX0;/TX1;/TX2; from a TCP client
+// raise RTS instead of going to the radio as CAT, and RX; drops it.
+// Fail-safes: RTS drops on RX;, when the keying client disconnects, when the
+// radio's USB goes away, and after PTT_MAX_MS.
+#define RADIO_PTT_RTS        1
+#define RADIO_RTS_TX_ASSERTED 1      // 1 = RTS asserted keys the radio; 0 = inverted
+#define PTT_MAX_MS           180000  // longest key-down before RTS is forced off
+#define PTT_ALSO_CAT         1       // also send the TX/RX command to the radio as CAT
+                                     // (RTS keys the RF; CAT TX may be what selects LINE IN)
+
 // ── MQTT broker (shack) ───────────────────────────────────
 // Broker requires auth (since 2026-08-21). Role account + password come from
 // secrets.h — this device uses the iot role. Passwords are in the shack

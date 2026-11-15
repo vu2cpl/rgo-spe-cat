@@ -39,6 +39,7 @@ a stale band.
 ```bash
 python3 install.py     # bootstraps PlatformIO (macOS/Pi aware), verifies the build
 ./flash.sh             # build + upload (picks the serial port)
+./ota.sh               # build + upload over Wi-Fi (call-back on TCP 48266)
 ./monitor.sh           # serial monitor
 ```
 
@@ -77,6 +78,7 @@ src/tcp_cat.*           Kenwood CAT over TCP
 src/main.cpp            Wi-Fi, MQTT, OTA, status LED
 tools/spe_test.py       bench-test the SPE CAT input from a Mac (sniff / emulate a TS-480)
 flash.sh / monitor.sh   serial-port pickers (never pin the port)
+ota.sh                  Wi-Fi upload through the UniFi IoT → Mac rule
 install.py              toolchain bootstrap, macOS/Pi branch
 enclosure/              3D-printed box (OpenSCAD); docs/BOX_PLAN.md has the plan + audio wiring
 ```

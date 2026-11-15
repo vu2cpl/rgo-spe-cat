@@ -2,9 +2,16 @@
 // radio through rig::transact() (the radio task's queue), except FA; and IF;
 // which are answered from the cached state to keep the radio link free for
 // the poll. Replies go back only to the client that asked.
+//
+// PTT (RADIO_PTT_RTS): TX;/TX0;/TX1;/TX2; raise the radio's USB RTS line and
+// RX; drops it; neither goes to the radio as CAT (its CAT TX is display-only).
+// Replies mimic the radio's own echo ("TX0;" / "RX0;"), which Hamlib already
+// worked with. RTS also drops when the keying client disconnects, when the
+// radio's USB goes away, and after PTT_MAX_MS.
 
 #include "tcp_cat.h"
 #include "rig.h"
+#include "ftdi_host.h"
 #include "config.h"
 #include <WiFi.h>
 
@@ -20,7 +27,41 @@ struct Client {
 };
 Client g_clients[CAT_TCP_MAX_CLIENTS];
 
-void handleCmd(Client& c, const char* cmd) {
+// ── PTT state (touched only by tcpTask) ──────────────────
+int      g_pttOwner = -1;   // index of the client that keyed; -1 = not keyed
+uint32_t g_pttSince = 0;
+
+bool rtsPtt(bool tx) { return ftdi::setRts(tx == bool(RADIO_RTS_TX_ASSERTED)); }
+
+void pttOff(const char* why) {
+  if (g_pttOwner < 0) return;
+  // If the radio's USB is gone there is nothing to release: the driver puts
+  // RTS back to idle when the radio is opened again.
+  if (rtsPtt(false) || !ftdi::connected()) {
+    if (PTT_ALSO_CAT && strcmp(why, "RX;")) {   // watchdog drop: take the radio out of CAT TX too
+      char tmp[16];
+      rig::transact("RX;", tmp, sizeof(tmp));
+    }
+    Serial.printf("[PTT] off (%s)\n", why);
+    g_pttOwner = -1;
+  }
+  // else: keep the owner and retry on the next loop pass.
+}
+
+bool isTxCmd(const char* cmd) {
+  return cmd[0] == 'T' && cmd[1] == 'X' &&
+         (cmd[2] == ';' || (cmd[2] >= '0' && cmd[2] <= '2' && cmd[3] == ';'));
+}
+
+void pttWatchdog() {
+  if (g_pttOwner < 0) return;
+  if (!g_clients[g_pttOwner].sock.connected()) pttOff("client gone");
+  else if (millis() - g_pttSince > PTT_MAX_MS) pttOff("max key-down time");
+  else if (!ftdi::connected()) pttOff("radio USB gone");
+}
+
+void handleCmd(int idx, const char* cmd) {
+  Client& c = g_clients[idx];
   uint32_t t0 = millis();
   RigState s = rig::get();
   char reply[96] = {0};
@@ -41,6 +82,22 @@ void handleCmd(Client& c, const char* cmd) {
     // reconnects every ~9 s. "0000" = no fixed width; Hamlib falls back to
     // the mode's normal passband.
     strlcpy(reply, "FW0000;", sizeof(reply));
+  } else if (RADIO_PTT_RTS && isTxCmd(cmd)) {
+    char tmp[16];
+    if (PTT_ALSO_CAT) rig::transact(cmd, tmp, sizeof(tmp));   // radio echoes "TX0;"
+    if (rtsPtt(true)) {
+      if (g_pttOwner < 0) Serial.printf("[PTT] on (%s)\n", cmd);
+      g_pttOwner = idx;
+      g_pttSince = millis();
+      strlcpy(reply, "TX0;", sizeof(reply));
+    } else {
+      strlcpy(reply, "?;", sizeof(reply));   // radio not there
+    }
+  } else if (RADIO_PTT_RTS && !strcmp(cmd, "RX;")) {
+    pttOff("RX;");
+    char tmp[16];
+    if (PTT_ALSO_CAT) rig::transact(cmd, tmp, sizeof(tmp));
+    strlcpy(reply, "RX0;", sizeof(reply));
   } else if (!strcmp(cmd, "AI;")) {
     strlcpy(reply, "AI0;", sizeof(reply));
   } else if (!strncmp(cmd, "AI", 2)) {
@@ -61,6 +118,7 @@ void tcpTask(void*) {
   g_server.setNoDelay(true);
   Serial.printf("[TCP] CAT server on port %d\n", CAT_TCP_PORT);
   for (;;) {
+    pttWatchdog();   // before accept(), so a freed slot is checked before reuse
     WiFiClient incoming = g_server.accept();
     if (incoming) {
       bool placed = false;
@@ -76,13 +134,14 @@ void tcpTask(void*) {
       }
       if (!placed) incoming.stop();
     }
-    for (auto& c : g_clients) {
+    for (int i = 0; i < CAT_TCP_MAX_CLIENTS; i++) {
+      Client& c = g_clients[i];
       if (!c.sock.connected()) continue;
       while (c.sock.available()) {
         char ch = c.sock.read();
         if (ch == '\r' || ch == '\n') continue;
         if (c.n < sizeof(c.buf) - 1) c.buf[c.n++] = ch;
-        if (ch == ';') { c.buf[c.n] = 0; handleCmd(c, c.buf); c.n = 0; }
+        if (ch == ';') { c.buf[c.n] = 0; handleCmd(i, c.buf); c.n = 0; }
         else if (c.n >= sizeof(c.buf) - 1) c.n = 0;
       }
     }

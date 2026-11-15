@@ -27,12 +27,14 @@ constexpr uint8_t  REQ_SET_LAT    = 0x09;
 constexpr uint16_t DATA_8N1       = 0x0008;
 constexpr uint16_t DTR_LOW        = 0x0100;   // mask bit set, value bit clear
 constexpr uint16_t RTS_LOW        = 0x0200;
+constexpr uint16_t RTS_HIGH       = 0x0202;   // mask bit set, value bit set
 constexpr uint8_t  LATENCY_MS     = 4;
 
 enum : uint32_t { EV_NEW_DEV = 1, EV_DEV_GONE = 2 };
 
 uint16_t g_vid, g_pid;
 uint32_t g_baud;
+bool     g_rtsIdle = false;
 
 usb_host_client_handle_t g_client = nullptr;
 usb_device_handle_t      g_dev    = nullptr;
@@ -48,7 +50,7 @@ usb_transfer_t* g_ctrl = nullptr;
 usb_transfer_t* g_in   = nullptr;
 usb_transfer_t* g_out  = nullptr;
 
-SemaphoreHandle_t    g_ctrlDone, g_outDone, g_outLock;
+SemaphoreHandle_t    g_ctrlDone, g_outDone, g_outLock, g_ctrlLock;
 StreamBufferHandle_t g_rx;
 TaskHandle_t         g_drvTask;
 
@@ -97,7 +99,10 @@ void inCb(usb_transfer_t* t) {
 }
 
 // ── helpers (run in usb_drv) ─────────────────────────────
+// Serialised: openDevice (usb_drv) and setRts (any task) share g_ctrl.
 bool vendorOut(uint8_t req, uint16_t value, uint16_t index) {
+  if (xSemaphoreTake(g_ctrlLock, pdMS_TO_TICKS(1500)) != pdTRUE) return false;
+  bool ok = false;
   auto* s = reinterpret_cast<usb_setup_packet_t*>(g_ctrl->data_buffer);
   s->bmRequestType = 0x40;
   s->bRequest      = req;
@@ -109,9 +114,11 @@ bool vendorOut(uint8_t req, uint16_t value, uint16_t index) {
   g_ctrl->bEndpointAddress = 0;
   g_ctrl->callback         = ctrlCb;
   g_ctrl->timeout_ms       = 500;
-  if (usb_host_transfer_submit_control(g_client, g_ctrl) != ESP_OK) return false;
-  if (xSemaphoreTake(g_ctrlDone, pdMS_TO_TICKS(1000)) != pdTRUE) return false;
-  return g_ctrl->status == USB_TRANSFER_STATUS_COMPLETED;
+  if (usb_host_transfer_submit_control(g_client, g_ctrl) == ESP_OK &&
+      xSemaphoreTake(g_ctrlDone, pdMS_TO_TICKS(1000)) == pdTRUE)
+    ok = g_ctrl->status == USB_TRANSFER_STATUS_COMPLETED;
+  xSemaphoreGive(g_ctrlLock);
+  return ok;
 }
 
 // FT232R/BM baud divisor: 3 MHz / baud, integer part plus 1/8 fractions
@@ -185,10 +192,11 @@ void openDevice(uint8_t addr) {
   }
   uint16_t bv, bi;
   baudDivisor(g_baud, bv, bi);
-  // DTR/RTS are forced low first thing, so they can never key the radio.
+  // DTR is forced low and RTS to its idle (not-transmitting) level first
+  // thing, so neither can key the radio on connect.
   bool ok = vendorOut(REQ_RESET, 0, 0) &&
             vendorOut(REQ_MODEM_CTRL, DTR_LOW, 0) &&
-            vendorOut(REQ_MODEM_CTRL, RTS_LOW, 0) &&
+            vendorOut(REQ_MODEM_CTRL, g_rtsIdle ? RTS_HIGH : RTS_LOW, 0) &&
             vendorOut(REQ_SET_BAUD, bv, bi) &&
             vendorOut(REQ_SET_DATA, DATA_8N1, 0) &&
             vendorOut(REQ_SET_FLOW, 0, 0) &&
@@ -270,8 +278,9 @@ void drvTask(void*) {
 
 }  // namespace
 
-void begin(uint16_t vid, uint16_t pid, uint32_t baud) {
-  g_vid = vid; g_pid = pid; g_baud = baud;
+void begin(uint16_t vid, uint16_t pid, uint32_t baud, bool rtsIdleAsserted) {
+  g_vid = vid; g_pid = pid; g_baud = baud; g_rtsIdle = rtsIdleAsserted;
+  g_ctrlLock = xSemaphoreCreateMutex();
   g_ctrlDone = xSemaphoreCreateBinary();
   g_outDone  = xSemaphoreCreateBinary();
   g_outLock  = xSemaphoreCreateMutex();
@@ -339,5 +348,10 @@ size_t read(uint8_t* buf, size_t len, uint32_t timeoutMs) {
 }
 
 void flushInput() { xStreamBufferReset(g_rx); }
+
+bool setRts(bool asserted) {
+  if (!g_ready) return false;
+  return vendorOut(REQ_MODEM_CTRL, asserted ? RTS_HIGH : RTS_LOW, 0);
+}
 
 }  // namespace ftdi

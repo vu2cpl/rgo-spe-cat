@@ -112,7 +112,8 @@ void setup() {
   Serial.println("\n[BOOT] RGO ONE SPE CAT Server");
 
   // Radio + amp first: these must work with or without WiFi.
-  ftdi::begin(RADIO_USB_VID, RADIO_USB_PID, RADIO_BAUD);
+  ftdi::begin(RADIO_USB_VID, RADIO_USB_PID, RADIO_BAUD,
+              RADIO_PTT_RTS && !RADIO_RTS_TX_ASSERTED);   // RTS idle = not transmitting
   rig::begin();
   spe::begin();
 
