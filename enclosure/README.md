@@ -5,7 +5,7 @@ wiring: [`docs/BOX_PLAN.md`](../docs/BOX_PLAN.md).
 
 ![preview](preview.png)
 
-**Status: draft 6 (2026-11-14), not printed.** Outer size 107 × 75 ×
+**Status: draft 7 (2026-11-15), not printed.** Draft 6 was test-fitted: the board moved around, and the 1/8" plugs could not seat through the 2.5 mm wall. Draft 7 fixes both. Outer size 107 × 75 ×
 27.8 mm. The base and lid render without errors and all layout checks pass.
 The dongle is measured (28 × 29 × 11.3 mm body + 14 mm USB plug, jacks
 12.4 mm apart, centres 6.35 mm up). Other sizes are datasheet values or guesses. They are marked `CHECK` in
@@ -31,12 +31,16 @@ box. See `docs/BOX_PLAN.md`.
 
 ## Inside
 
-- **S3 board:** its two USB-C sockets show through one slot. It sits on a
-  rib between its header rows, held with foam tape. A stop block behind it
-  keeps it from moving back when a cable is plugged in.
-- **CM108 dongle:** lies in a cradle with its jack end against the panel. A
-  zip tie through the cradle floor holds it. The USB extension socket sits
-  behind it on a zip-tie anchor.
+- **S3 board:** held on all sides, no tape. It sits on a rib between its
+  header rows. The wall is in front of it, a stop block behind it, and four
+  corner fences at its sides. Two fingers on the lid press it down: a pad on
+  the ESP32 module shield and a bar on the USB-C socket shells. Its two
+  USB-C sockets show through one 8.5 mm slot, tall enough for plug overmolds.
+- **CM108 dongle:** its jack end sits in a window in the panel, flush with
+  the outside, so the 1/8" plugs go fully home whatever their body size.
+  It lies in a cradle; two stop posts behind its body take the push when a
+  plug goes in. A zip tie through the cradle floor holds it down. The USB
+  extension socket sits behind it on a zip-tie anchor.
 - **AMP jack:** a 2.5 mm stereo panel jack, a different size from the 1/8"
   audio jacks so the cables can't be swapped.
 - **PC cable notch:** a tab on the lid closes it down to cable size, so the
@@ -52,6 +56,8 @@ box. See `docs/BOX_PLAN.md`.
 | `notch_w` | 6.5 | PC cable diameter + 1 (cable not chosen yet; 6.5 suits a ~5.5 mm USB cable). Only the notch and the lid tab depend on it |
 | `amp_jack_body` | 11 | The AMP jack's body width behind the panel (the 6.2 mm hole is confirmed for its ~5.8 mm thread) |
 | `insert_hole_d` | 4.0 | The bore your M3 heat-set inserts need |
+| `module_h`, `press_y` | 3.2, 46 | Height of the ESP32-S3 module shield above the board, and where its centre is from the USB end. The lid pad presses there |
+| `ext_sock_w` | 18 | Width of the USB extension's socket housing (must pass between the dongle stop posts) |
 
 ## Use
 

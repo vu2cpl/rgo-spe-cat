@@ -1,7 +1,7 @@
 # RGO ONE SPE CAT Server — Project Handover
 *For continuation in a new Claude session*
 
-**Created:** 2026-11-14 · **Last updated:** 2026-11-14 · **Type:** ESP firmware (ESP32-S3 N16R8)
+**Created:** 2026-11-14 · **Last updated:** 2026-11-15 · **Type:** ESP firmware (ESP32-S3 N16R8)
 
 ---
 
@@ -282,6 +282,14 @@ radio → SPE path doesn't need Wi-Fi.
 
 ## What changed
 
+- **2026-11-15** — Enclosure draft 7, after a draft-6 test fit failed:
+  the S3 board slid around (foam tape on a rib held nothing), and the two
+  1/8" plugs could not seat in the dongle because the 2.5 mm wall stood
+  between plug body and jack. Now the dongle's jack end sits in a panel
+  window, flush with the outside, with stop posts behind it. The board is
+  boxed in by corner fences, the stop block and two lid fingers (module
+  shield pad, USB-C socket bar), no tape. USB-C slot raised 7 → 8.5 mm for
+  plug overmolds. New CHECK values: `module_h`, `press_y`, `ext_sock_w`.
 - **2026-11-14** — Enclosure: S3 board measured 63.5 × 28 mm (with the
   antenna end); the LED is just behind the USB-C sockets, so the lid has a
   3.2 × 18 mm slot across the board there.

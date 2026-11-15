@@ -66,7 +66,18 @@ pin_clear = 12;    // floor → board underside. Wires are soldered to the heade
                    // 12 clears downward headers (~8.5) plus the solder joints.
 rib_w     = 8;     // support rib, between the header rows
 usbc_slot_w = 27;  // one slot over both USB-C sockets (overmolds fit side by side)
-usbc_slot_h = 7;
+usbc_slot_h = 8.5; // tall enough for a USB-C plug's overmold, so it can seat fully
+// Board retention: no foam tape. Rib below, wall in front, stop block behind,
+// four corner fences at the sides, and two lid fingers pressing down from above.
+fence_t     = 1.6;   // corner fence thickness
+fence_l     = 5;     // corner fence length along the board edge
+fence_clear = 0.3;   // gap between fence and board edge
+module_h    = 3.2;   // CHECK: ESP32-S3 module shield height above the board top
+press_y     = 46;    // CHECK: lid press point on the module shield, from the board's USB end
+press_d     = 6;
+press_gap   = 0.3;   // gap between lid fingers and the parts they press on
+usbc_h      = 3.1;   // USB-C socket height above the board top (measured)
+usbc_bar_l  = 4.5;   // lid bar over the USB-C socket shells, from the inner wall
 usbc_z_above_pcb = 1.55; // socket centre above the board's top face (measured: 3.1 tall)
 
 /* [Status LED window] */
@@ -90,7 +101,13 @@ dongle_h    = 11.3;  // height
 jack_pitch  = 12.4;  // centre-to-centre of its two 1/8" jacks
 jack_z      = 6.35;  // jack centre above the dongle's underside
 mic_left    = true;  // mic jack on the LEFT seen from outside the panel
-jack_hole_d = 8;     // fits a 1/8" plug's body through the wall
+// The dongle's jack end sits in a window in the panel, flush with the outside,
+// so any 1/8" plug seats fully. Stop posts behind its body take the push.
+dongle_proud = 0;    // how far the jack face stands out from the panel (0 = flush)
+dongle_body = 29;    // body length, jack end to the USB plug shoulder
+usb_plug_w  = 12;    // width of the dongle's USB-A plug
+ext_sock_w  = 18;    // CHECK: width of the USB extension's socket housing
+window_clear = 0.3;  // clearance around the dongle in the panel window
 pad_h       = 4;     // cradle floor the dongle sits on (zip tie runs through it)
 rail_t      = 2;     // cradle side rails
 cradle_clear = 0.4;
@@ -123,6 +140,7 @@ base_h = floor_t + in_h;
 pcb_z  = floor_t + pin_clear;       // board underside
 usbc_z = pcb_z + pcb_t + usbc_z_above_pcb;
 jack_zabs = floor_t + pad_h + jack_z;
+dongle_y0 = -wall - dongle_proud;   // dongle jack face, inner coordinates
 in_jack_x  = dongle_x + (mic_left ? -1 : 1) * jack_pitch/2;
 out_jack_x = dongle_x - (mic_left ? -1 : 1) * jack_pitch/2;
 cradle_w = dongle_w + 2*cradle_clear;
@@ -147,8 +165,8 @@ module panel_text(x, z, t, sz = 4) {
 
 module labels() {
     panel_text(amp_jack_x, jack_zabs + amp_jack_hole_d/2 + 4, "AMP", 3.5);
-    panel_text(in_jack_x,  jack_zabs + jack_hole_d/2 + 4, "IN", 3.5);
-    panel_text(out_jack_x, jack_zabs + jack_hole_d/2 + 4, "OUT", 3.5);
+    panel_text(in_jack_x,  floor_t + pad_h + dongle_h + window_clear + 3.2, "IN", 3.2);
+    panel_text(out_jack_x, floor_t + pad_h + dongle_h + window_clear + 3.2, "OUT", 3.2);
     panel_text(pcb_x0 + pcb_w/2, usbc_z - usbc_slot_h/2 - 4, "RIG    PWR", 3.5);
     panel_text(notch_x, base_h - notch_d - 5, "PC");
 }
@@ -160,8 +178,9 @@ module usbc_slot() {
 }
 
 module jack_holes() {
-    for (x = [in_jack_x, out_jack_x])
-        translate([ix(x), -1, jack_zabs]) rotate([-90, 0, 0]) cylinder(d = jack_hole_d, h = wall + 2);
+    // window the dongle's jack end fits into
+    translate([ix(dongle_x - dongle_w/2 - window_clear), -1, floor_t + pad_h - eps])
+        cube([dongle_w + 2*window_clear, wall + 2, dongle_h + window_clear + eps]);
     translate([ix(amp_jack_x), -1, jack_zabs]) rotate([-90, 0, 0]) cylinder(d = amp_jack_hole_d, h = wall + 2);
 }
 
@@ -177,6 +196,11 @@ module cradle() {
                 cube([rail_t, dongle_l, pad_h + dongle_h*0.6]);
                 translate([-1, dongle_l/2 - tie_slot_w/2, 1]) cube([rail_t + 2, tie_slot_w, tie_slot_h]);
             }
+    // stop posts behind the dongle body, either side of its USB plug: a plug
+    // pushed into a jack can't shove the dongle back into the box
+    for (sx = [-1, 1])
+        translate([ix(dongle_x + sx*(dongle_w/2 - 2) - 2), iy(dongle_y0 + dongle_body + 0.3), floor_t - eps])
+            cube([4, 3, pad_h + dongle_h*0.8]);
 }
 
 module notch() {
@@ -205,6 +229,10 @@ module base() {
             translate([ix(pcb_x0 + pcb_w/2 - rib_w/2), iy(6), 0]) cube([rib_w, pcb_l - 12, pcb_z]);
             // stop block behind the board's far end
             translate([ix(pcb_x0 + pcb_w/2 - 6), iy(pcb_l + 0.4), 0]) cube([12, 4, pcb_z + pcb_t + 2]);
+            // corner fences: hold the board sideways at both ends
+            for (fx = [pcb_x0 - fence_clear - fence_t, pcb_x0 + pcb_w + fence_clear],
+                 fy = [0, pcb_l - fence_l])
+                translate([ix(fx), iy(fy), 0]) cube([fence_t, fence_l, pcb_z + pcb_t + 1.5]);
             cradle();
             for (t = ties) tie_anchor(t);
         }
@@ -227,6 +255,11 @@ module lid() {
                 translate([wall + lip_in, wall + lip_in, 0]) cube([in_l - 2*lip_in, in_d - 2*lip_in, lip_h + eps]);
                 translate([wall + lip_in + lip_t, wall + lip_in + lip_t, -1]) cube([in_l - 2*(lip_in + lip_t), in_d - 2*(lip_in + lip_t), lip_h + 2]);
             }
+            // fingers that press the S3 board down onto its rib
+            translate([ix(pcb_x0 + pcb_w/2), iy(press_y), pcb_z + pcb_t + module_h + press_gap])
+                cylinder(d = press_d, h = base_h - (pcb_z + pcb_t + module_h + press_gap) + eps);
+            translate([ix(pcb_x0 + 2), iy(lip_in + lip_t), pcb_z + pcb_t + usbc_h + press_gap])
+                cube([pcb_w - 4, usbc_bar_l - lip_in - lip_t, base_h - (pcb_z + pcb_t + usbc_h + press_gap) + eps]);
             // tab that closes the cable notch down to cable size
             translate([ix(notch_x) - notch_w/2 + 0.2, 0, base_h - (notch_d - cable_h)])
                 cube([notch_w - 0.4, wall + lip_in + lip_t, notch_d - cable_h + eps]);
@@ -249,8 +282,9 @@ module ghosts() {
     // S3 board
     %translate([ix(pcb_x0), iy(0), pcb_z]) cube([pcb_w, pcb_l, pcb_t]);
     // CM108 dongle in its cradle + the extension socket behind it
-    %translate([ix(dongle_x - dongle_w/2), iy(0), floor_t + pad_h]) cube([dongle_w, dongle_l, dongle_h]);
-    %translate([ix(dongle_x - 7), iy(dongle_l - 10), floor_t + pad_h]) cube([14, 24, 8]);
+    %translate([ix(dongle_x - dongle_w/2), iy(dongle_y0), floor_t + pad_h]) cube([dongle_w, dongle_body, dongle_h]);
+    %translate([ix(dongle_x - usb_plug_w/2), iy(dongle_y0 + dongle_body), floor_t + pad_h + 3]) cube([usb_plug_w, dongle_l - dongle_body, 4.5]);
+    %translate([ix(dongle_x - ext_sock_w/2), iy(dongle_y0 + dongle_l - 12), floor_t + pad_h + 1]) cube([ext_sock_w, 26, 8]);
     // AMP jack body behind the panel
     %translate([ix(amp_jack_x - amp_jack_body/2), iy(0), jack_zabs - amp_jack_body/2]) cube([amp_jack_body, 14, amp_jack_body]);
 }
@@ -259,7 +293,9 @@ echo(str("Outer size: ", out_l, " × ", out_d, " × ", base_h + lid_t, " mm"));
 assert(dongle_x - cradle_w/2 - rail_t >= pcb_x0 + pcb_w + 3, "dongle cradle hits the S3 board");
 assert(dongle_x - cradle_w/2 - rail_t >= pcb_x0 + pcb_w/2 + usbc_slot_w/2 + 3, "jack holes crowd the USB-C slot");
 assert(amp_jack_x - amp_jack_body/2 >= dongle_x + cradle_w/2 + rail_t + 1, "AMP jack hits the dongle cradle");
-assert(dongle_l + 22 <= in_d, "no room behind the dongle for the extension socket");
+assert(dongle_y0 + dongle_l + 22 <= in_d, "no room behind the dongle for the extension socket");
+assert(ext_sock_w/2 <= dongle_w/2 - 4 - 0.5, "extension socket hits the dongle stop posts");
+assert(usbc_slot_w/2 + pcb_x0 + pcb_w/2 <= dongle_x - dongle_w/2 - window_clear - 3, "USB-C slot crowds the dongle window");
 assert(notch_x - notch_w/2 >= amp_jack_x + amp_jack_body/2 + 1, "cable notch hits the AMP jack");
 assert(notch_x + notch_w/2 <= in_l - post_d, "cable notch hits a corner post");
 assert(pcb_x0 >= post_d, "board clashes with a corner post");
