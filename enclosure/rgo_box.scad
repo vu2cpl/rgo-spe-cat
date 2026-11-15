@@ -82,10 +82,11 @@ usbc_z_above_pcb = 1.55; // socket centre above the board's top face (measured: 
 
 /* [Status LED window] */
 led_window = true;
-// The RGB LED sits just behind the USB-C sockets. The window is a slot across
-// the board there, so it shows whichever side the LED is on.
+// The RGB LED (a small square part) is 23 mm from the board's USB end
+// (measured 2026-11-15). The window is a slot across the board there, so it
+// shows the LED wherever it sits across the width.
 led_x = 14;        // slot centre, from the board's left edge
-led_y = 10;        // slot centre, from the board's USB end
+led_y = 23;        // slot centre, from the board's USB end (measured)
 led_d = 3.2;       // slot width
 led_slot_l = 18;   // slot length, across the board
 

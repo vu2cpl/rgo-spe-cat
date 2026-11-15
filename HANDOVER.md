@@ -282,6 +282,9 @@ radio → SPE path doesn't need Wi-Fi.
 
 ## What changed
 
+- **2026-11-15** — LED slot in the lid moved: the status LED is 23 mm
+  from the board's USB end (measured), not just behind the USB-C sockets.
+  Draft 6's slot sat ~10 mm in and missed it.
 - **2026-11-15** — PC cable now leaves through a 6 × 14 mm notch in the
   BACK wall, straight behind the dongle (Manoj cut this into the draft-6
   box). The cable no longer U-turns to the front panel, so extension
