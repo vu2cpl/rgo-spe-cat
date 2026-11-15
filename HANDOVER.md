@@ -42,7 +42,8 @@
   (polarity: RTS asserted = TX, as configured), but neither RTS alone nor
   RTS + CAT TX passes ACC1 LINE IN audio, so no power. The mic/line choice
   is made by the radio CPU (SSB gen U4 HEF4053, `MICS` line, supplement
-  p. 36); only VOX selects LINE IN. **Use VOX; keep menu 33 OFF.** Open
+  p. 36); only VOX selects LINE IN. Confirmed on air: during an RTS key-up
+  (WSJT-X Tune) the hand mic gives power, so RTS PTT uses the mic input. **Use VOX; keep menu 33 OFF.** Open
   question for RGO: does LINE IN work with RTS/CAT PTT at all?
 - **MQTT 2026-11-14:** logs in to the broker as `iot` (broker log: `New
   client connected … as rgo-spe-cat (u'iot')`). The broker ACL gained
