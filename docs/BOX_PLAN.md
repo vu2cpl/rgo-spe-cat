@@ -110,6 +110,9 @@ level is fine. **Measured: 25 dB with the antenna on, 15 dB with it off**
 dongle. If you ever want more margin, a small audio preamp before the
 dongle would add it. The cable itself needs no further changes.
 
+**With the radio preamp on (RF gain at max): about 35 dB** — inside the
+WSJT-X range with margin. Run with the preamp on for digital modes.
+
 **Where LINE OUT comes from** (tech supplement v2.30A, IF/AF board p. 49,
 main board p. 4): IF/AF U4.A "BUF AMP" (½ MC33079), a fixed gain of
 1 + 120 k/3.3 k ≈ 37 (R25/R34), then R53 620 Ω, C26 1 µF and an
