@@ -129,8 +129,10 @@ up), **preamp on** and **ATT off**. The only hardware route to more level
 inside the radio is a larger R25 (SMD rework); an external preamp is
 simpler.
 
-**TX level:** set it with the Mac's output volume and the radio's mic gain,
-so the radio shows no ALC. The 1 k gives the dongle a proper load.
+**TX level (measured 2026-11-15):** OUT tip direct to LINE IN + (the 1 k
+was removed). With the Mac output at max, ALC shows just 1–2 dots, which is
+right, so there is no headroom to spare: run the Mac output at max and trim
+with the radio's mic gain / power if needed.
 
 **Mic bias:** the mic tip carries the dongle's mic bias, and with no shunt
 it now sits on the radio's LINE OUT. If you hear clicks or distortion, add

@@ -305,7 +305,8 @@ radio → SPE path doesn't need Wi-Fi.
 
 - **2026-11-15** — PTT: CAT TX is display-only. RTS PTT added to the
   firmware (flashed by OTA) and working with menu 33 ON + menu 02 LINE IN
-  ON; that is now the PTT method (VOX also works). OTA now via `./ota.sh` (call-back pinned to TCP 48266;
+  ON; that is now the PTT method (VOX also works). TX level: Mac output at max
+  gives ALC 1–2 dots (OK, no headroom). OTA now via `./ota.sh` (call-back pinned to TCP 48266;
   Manoj added 192.168.30.191 to the UniFi IoT → Mac OTA rule).
 - **2026-11-15** — Draft-7 box printed and installed. Radio CAT through it
   verified (TCP 4533: `FA` 7.0278 MHz LSB, `FB` live). **RX audio far too
