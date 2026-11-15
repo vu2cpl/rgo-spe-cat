@@ -29,8 +29,12 @@
   never checked. Manoj confirmed on air: the hand-mic PTT keys the radio
   properly (RF out, amp keys), CAT TX does not — it is a display-only TX
   state, and ACC1 LINE IN audio is not passed in it. Real PTT has to come
-  from a hardware/RTS line. The manual's PC PTT route is the USB **RTS** line
-  (menu 33). Planned fix (not started, deferred by Manoj): box firmware
+  from a hardware/RTS line. **Working now (2026-11-15): VOX.** Radio menu 10
+  VOX GAIN on, menu 9 delay 0.5 s (default), WSJT-X PTT Method = VOX (CAT
+  still does frequency/mode). Tune keys the radio with RF out and the amp
+  keys. Caution: any sound sent to the USB Audio Device keys the
+  transmitter. The manual's PC PTT route is the USB **RTS** line
+  (menu 33). Possible later fix instead of VOX (not started, deferred by Manoj): box firmware
   raises FTDI RTS on `TX…;`, drops it on `RX;`, with a fail-safe timeout
   and drop on client disconnect; radio menu 33 = ON; test polarity into a
   dummy load.
