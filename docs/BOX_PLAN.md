@@ -49,9 +49,8 @@ screened leads.
 The three resistors go **inside the DB15 plug's hood**:
 
 ```
-RX:  ACC1 pin 11 ── 10k ──┬──► IN plug (tip)    → CM108 mic jack
-                         1k
-     ACC1 pin 15 ─────────┴──► IN plug (sleeve)
+RX:  ACC1 pin 11 ─────────► IN plug (tip)     → CM108 mic jack   (direct, no resistors)
+     ACC1 pin 15 ─────────► IN plug (sleeve)
 
 TX:  OUT plug (tip) ── 1k ──► ACC1 pin 10 (LINE IN +)   ← CM108 headphone jack
      OUT plug (sleeve) ─────► ACC1 pin 9 + pin 15
@@ -59,7 +58,7 @@ TX:  OUT plug (tip) ── 1k ──► ACC1 pin 10 (LINE IN +)   ← CM108 head
 
 | ACC1 pin | Signal | Cable |
 |---|---|---|
-| 11 | LINE OUT (RX audio) | Core 1 → 10 k → IN tip (with 1 k to ground) |
+| 11 | LINE OUT (RX audio) | Core 1 → IN tip, direct (no resistors) |
 | 10 | LINE IN + (600 Ω) | Core 2 ← 1 k ← OUT tip |
 | 9 | LINE IN − | Joined to 15 in the hood (input driven unbalanced) |
 | 15 | Ground | Screen → both plug sleeves |
@@ -83,7 +82,7 @@ is mirrored, so go by the numbers moulded on the plug.
 | 8 | PTT | — (PTT is on CAT) |
 | 9 | LINE IN − | Joined to 15 in the hood |
 | 10 | LINE IN + (600 Ω) | TX audio, through 1 k from the OUT tip |
-| 11 | LINE OUT | RX audio, through 10 k (1 k to ground) to the IN tip |
+| 11 | LINE OUT | RX audio, direct to the IN tip |
 | 12 | 8 V RX (8 V while receiving) | **Leave open** |
 | 13 | 8 V TX (8 V while transmitting) | **Leave open** |
 | 14 | External power ON | **Leave open** (switches the radio on) |
@@ -95,24 +94,26 @@ that no strand bridges any of them to 15 or the screen before you plug in.
 **Radio setting:** set **menu 02 LINE IN = E** (external), so TX audio comes
 from ACC1, not the front mic.
 
-> **Known fault (2026-11-15): RX audio far too low.** The 10 k / 1 k
-> divider (÷11) was chosen without knowing the line-out level, and was not
-> bench-tested before the cable was closed up. The RGO ONE's LINE OUT comes
-> from the AF preamp (MC33079, before the volume control), so it is already
-> near mic level. With ÷11, WSJT-X shows ~0 dB at full Mac input gain.
-> **Fix:** bridge the 10 k in the DB15 hood, keep the 1 k to ground, then set
-> the level with the Mac slider. Values below are the original (wrong) design.
+> **Fixed fault (2026-11-15): RX audio was far too low.** The first build
+> had a 10 k / 1 k divider (÷11), chosen without knowing the line-out level
+> and not bench-tested before the cable was closed. The RGO ONE's LINE OUT
+> comes from the AF preamp (MC33079, before the volume control), so it is
+> already near mic level. With ÷11, WSJT-X showed ~0 dB at full Mac input
+> gain. Both RX resistors are now removed.
 
-**RX level (original design, too low):** the 10 k / 1 k divider (÷11) brings the line out down to mic
-level. Set the final level with the Mac's input volume (Audio MIDI Setup),
-so WSJT-X shows about 30 dB on a quiet band. If the level is still too high
-or too low, change the 1 k. A smaller value makes it quieter.
+**RX level (measured 2026-11-15):** LINE OUT direct to the CM108 mic input,
+no resistors: WSJT-X shows **about 25 dB**. That is usable (WSJT-X wants
+roughly 20–40 dB; decoding does not depend on the exact level). To confirm
+there is enough level, disconnect the antenna: if the reading drops by
+10 dB or more, band noise is above the dongle's own noise floor and the
+level is fine.
 
 **TX level:** set it with the Mac's output volume and the radio's mic gain,
 so the radio shows no ALC. The 1 k gives the dongle a proper load.
 
-**Mic bias:** the mic tip carries the dongle's mic bias, and the 1 k shunts
-it. If that causes trouble, add a 1 µF capacitor in series with the tip.
+**Mic bias:** the mic tip carries the dongle's mic bias, and with no shunt
+it now sits on the radio's LINE OUT. If you hear clicks or distortion, add
+a 1 µF capacitor in series with the tip.
 
 **Isolation:** the box runs on its own charger, and the radio's USB goes to
 the S3, not the PC. So the audio cable is the only PC ↔ radio path. **If
@@ -216,7 +217,8 @@ lining later.
   - 1 × DB15 male plug with hood;
   - two 1/8" (3.5 mm) mono or stereo plugs;
   - about 1 m of 2-core screened cable;
-  - resistors: 10 k, 1 k, 1 k (plus a spare 1 µF capacitor).
+  - resistor: 1 k for the TX line (plus a spare 1 µF capacitor). The RX
+    line needs no resistors.
 - **Short USB-A extension** (dongle → PC).
 - **Ferrite clamps** (snap-on, mix 31).
 - **Assembly:**

@@ -286,8 +286,9 @@ radio → SPE path doesn't need Wi-Fi.
   verified (TCP 4533: `FA` 7.0278 MHz LSB, `FB` live). **RX audio far too
   low** (WSJT-X ~0 dB at full Mac input gain): the 10 k / 1 k divider was
   Claude's unmeasured guess and the cable was never level-tested before it
-  was closed. Fix pending: bridge the 10 k in the DB15 hood. SPE not yet
-  connected.
+  was closed. Fixed the same day: both RX resistors removed, LINE OUT now
+  goes straight to the dongle mic input, WSJT-X shows ~25 dB (usable).
+  TX not yet tested. SPE not yet connected.
 - **2026-11-15** — `docs/BOX_PLAN.md` now has both full DB15 pinouts:
   RGO ONE ACC1 (manual §5.5) and SPE CAT (1.5K-FA manual §12.1), each
   marked with what the cable uses and which pins must stay open.
