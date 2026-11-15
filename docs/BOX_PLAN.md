@@ -22,7 +22,9 @@
 | C-Media CM108 USB sound dongle (card 2 or 3, `0D8C:0014`), **left whole in its shell**, jacks facing the panel | Audio to and from the PC for WSJT-X. Mono mic in, stereo out, 48 kHz, no driver needed on macOS |
 | Short USB extension (dongle → out of the box) | Dongle's USB to the PC |
 
-PTT stays on **CAT** (already verified with WSJT-X). No PTT wire is needed,
+PTT was planned on **CAT**, but the RGO ONE ignores CAT `TX;` for real
+transmit (shows TX, no RF; found 2026-11-15). Planned fix: USB RTS PTT from
+the box firmware (menu 33), see HANDOVER. No PTT wire is needed,
 and no GPIO hack on the CM108.
 
 ## Panel (front wall, left to right from outside)

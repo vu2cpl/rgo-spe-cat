@@ -22,8 +22,15 @@
   separate config (`--rig-name=RGO`, `~/Library/Preferences/WSJT-X - RGO.ini`)
   so the main WSJT-X setup is untouched. Lag is at most WSJT-X's poll
   interval (1 s minimum); the S3 side adds ~7 ms.
-- **PTT via CAT verified 2026-11-14:** `rigctl T 1` / `T 0` and WSJT-X
-  Test PTT key and release the radio.
+- **PTT via CAT does NOT work (found 2026-11-15).** `TX;` / `TX0;` / `TX1;`
+  (and `rigctl T 1`, WSJT-X Tune) make the radio *show* TX and set the TX
+  flag in `IF;`, but it gives **no RF and does not key the amp**. The
+  2026-11-14 "verified" note was based on the display/flag only; RF was
+  never checked. The manual's PC PTT route is the USB **RTS** line
+  (menu 33). Planned fix (not started, deferred by Manoj): box firmware
+  raises FTDI RTS on `TX…;`, drops it on `RX;`, with a fail-safe timeout
+  and drop on client disconnect; radio menu 33 = ON; test polarity into a
+  dummy load.
 - **MQTT 2026-11-14:** logs in to the broker as `iot` (broker log: `New
   client connected … as rgo-spe-cat (u'iot')`). The broker ACL gained
   `topic write shack/rgo-spe-cat/#` under `user iot` (see
@@ -288,7 +295,9 @@ radio → SPE path doesn't need Wi-Fi.
   Claude's unmeasured guess and the cable was never level-tested before it
   was closed. Fixed the same day: both RX resistors removed, LINE OUT now
   goes straight to the dongle mic input, WSJT-X shows ~25 dB (usable).
-  TX not yet tested. SPE not yet connected.
+  RX level 35 dB with the radio preamp on. TX audio reaches the dongle
+  output (headphone check) but the radio does not transmit when keyed over
+  CAT — see "PTT via CAT does NOT work" above. SPE CAT not yet connected.
 - **2026-11-15** — `docs/BOX_PLAN.md` now has both full DB15 pinouts:
   RGO ONE ACC1 (manual §5.5) and SPE CAT (1.5K-FA manual §12.1), each
   marked with what the cable uses and which pins must stay open.
