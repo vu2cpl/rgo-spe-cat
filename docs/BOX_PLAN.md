@@ -97,8 +97,7 @@ from ACC1, not the front mic.
 > **Fixed fault (2026-11-15): RX audio was far too low.** The first build
 > had a 10 k / 1 k divider (÷11), chosen without knowing the line-out level
 > and not bench-tested before the cable was closed. The RGO ONE's LINE OUT
-> comes from the AF preamp (MC33079, before the volume control), so it is
-> already near mic level. With ÷11, WSJT-X showed ~0 dB at full Mac input
+> is already low, near mic level (see below). With ÷11, WSJT-X showed ~0 dB at full Mac input
 > gain. Both RX resistors are now removed.
 
 **RX level (measured 2026-11-15):** LINE OUT direct to the CM108 mic input,
@@ -110,6 +109,18 @@ level is fine. **Measured: 25 dB with the antenna on, 15 dB with it off**
 (a 10 dB drop). That just passes: band noise sets the noise floor, not the
 dongle. If you ever want more margin, a small audio preamp before the
 dongle would add it. The cable itself needs no further changes.
+
+**Where LINE OUT comes from** (tech supplement v2.30A, IF/AF board p. 49,
+main board p. 4): IF/AF U4.A "BUF AMP" (½ MC33079), a fixed gain of
+1 + 120 k/3.3 k ≈ 37 (R25/R34), then R53 620 Ω, C26 1 µF and an
+L13/C34/C35 RF filter on the main board to ACC1 pin 11. It is after the
+AGC and before the volume control. **There is no level trimmer.** The four
+2 k trimmers on the IF/AF board (R26, R31, R40, R60) are factory AGC
+settings (threshold and timing); don't use them to set audio level. What
+does change the line-out level is the radio's **RF gain** (keep it fully
+up), **preamp on** and **ATT off**. The only hardware route to more level
+inside the radio is a larger R25 (SMD rework); an external preamp is
+simpler.
 
 **TX level:** set it with the Mac's output volume and the radio's mic gain,
 so the radio shows no ALC. The 1 k gives the dongle a proper load.
