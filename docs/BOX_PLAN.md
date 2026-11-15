@@ -56,14 +56,14 @@ The three resistors go **inside the DB15 plug's hood**:
 RX:  ACC1 pin 11 ─────────► IN plug (tip)     → CM108 mic jack   (direct, no resistors)
      ACC1 pin 15 ─────────► IN plug (sleeve)
 
-TX:  OUT plug (tip) ── 1k ──► ACC1 pin 10 (LINE IN +)   ← CM108 headphone jack
+TX:  OUT plug (tip) ───────► ACC1 pin 10 (LINE IN +)   ← CM108 headphone jack (direct)
      OUT plug (sleeve) ─────► ACC1 pin 9 + pin 15
 ```
 
 | ACC1 pin | Signal | Cable |
 |---|---|---|
 | 11 | LINE OUT (RX audio) | Core 1 → IN tip, direct (no resistors) |
-| 10 | LINE IN + (600 Ω) | Core 2 ← 1 k ← OUT tip |
+| 10 | LINE IN + (600 Ω) | Core 2 ← OUT tip, direct |
 | 9 | LINE IN − | Joined to 15 in the hood (input driven unbalanced) |
 | 15 | Ground | Screen → both plug sleeves |
 | 8 | PTT | Not used (PTT is on CAT) |
@@ -85,7 +85,7 @@ is mirrored, so go by the numbers moulded on the plug.
 | 7 | CWK (CW keying from an external source / PC) | — |
 | 8 | PTT | — (PTT is on CAT) |
 | 9 | LINE IN − | Joined to 15 in the hood |
-| 10 | LINE IN + (600 Ω) | TX audio, through 1 k from the OUT tip |
+| 10 | LINE IN + (600 Ω) | TX audio, direct from the OUT tip |
 | 11 | LINE OUT | RX audio, direct to the IN tip |
 | 12 | 8 V RX (8 V while receiving) | **Leave open** |
 | 13 | 8 V TX (8 V while transmitting) | **Leave open** |
@@ -240,8 +240,7 @@ lining later.
   - 1 × DB15 male plug with hood;
   - two 1/8" (3.5 mm) mono or stereo plugs;
   - about 1 m of 2-core screened cable;
-  - resistor: 1 k for the TX line (plus a spare 1 µF capacitor). The RX
-    line needs no resistors.
+  - no resistors (both lines run direct); a spare 1 µF capacitor.
 - **Short USB-A extension** (dongle → PC).
 - **Ferrite clamps** (snap-on, mix 31).
 - **Assembly:**
