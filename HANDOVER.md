@@ -33,7 +33,7 @@
   never checked. Manoj confirmed on air: the hand-mic PTT keys the radio
   properly (RF out, amp keys), CAT TX does not — it is a display-only TX
   state, and ACC1 LINE IN audio is not passed in it. Real PTT has to come
-  from a hardware/RTS line. **Working now (2026-11-15): VOX.** Radio menu 10
+  from a hardware/RTS line. **First workaround (2026-11-15), now the fallback: VOX.** Radio menu 10
   VOX GAIN on, menu 9 delay 0.5 s (default), WSJT-X PTT Method = VOX (CAT
   still does frequency/mode). Tune keys the radio with RF out and the amp
   keys. Caution: any sound sent to the USB Audio Device keys the
@@ -254,7 +254,7 @@ radio → SPE path doesn't need Wi-Fi.
    4533 returns the VFO.
 2. ~~Test TCP CAT with Hamlib, WSJT-X and PTT via CAT~~ (done).
 3. ~~Make the DB15 cable and bench test in standby~~ (done — amp follows).
-4. ~~Key up with the amp in operate on a few bands~~ (done). Box it up — enclosure drafted in `enclosure/`; measure the `CHECK` values, bench-test the audio pad, then print.
+4. ~~Key up with the amp in operate on a few bands~~ (done). ~~Box it up~~ (done 2026-11-15: printed, installed, audio wired direct with no pad, RTS PTT working).
 
 ## Known gotchas
 
