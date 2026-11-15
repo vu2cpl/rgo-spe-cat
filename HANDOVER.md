@@ -311,8 +311,8 @@ radio → SPE path doesn't need Wi-Fi.
   Shack addresses moved to the git-ignored `secrets.h` (`MQTT_HOST`,
   `OTA_HOST`) first; older commits still hold private-range LAN IPs, no
   passwords. Added to vu2cpl.com (Shack Firmware & Field Devices, top
-  card). A self-contained write-up for the RGO ONE group was generated
-  (kept outside the repo). Photos of the finished box added: `docs/photos/`
+  card). Write-up for the RGO ONE group is hosted at
+  https://vu2cpl.com/projects/rgo-spe-cat/ (the card's Read more link). Photos of the finished box added: `docs/photos/`
   (front, inside), shown in README and BOX_PLAN.
 - **2026-11-15** — **SPE CAT cable wired through the new box and tested:
   working** (Manoj). Box now fully in service: radio CAT, RX/TX audio, RTS

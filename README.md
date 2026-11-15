@@ -11,7 +11,8 @@ are all verified. **PTT is the radio's USB RTS line** (radio menu 33 ON,
 menu 02 LINE IN ON; WSJT-X PTT Method = CAT): the box turns `TX;`/`RX;` into
 RTS, because the RGO ONE's own CAT `TX;` only shows TX without
 transmitting. Wiring: [`docs/wiring.svg`](docs/wiring.svg); full plan in
-[`docs/BOX_PLAN.md`](docs/BOX_PLAN.md).
+[`docs/BOX_PLAN.md`](docs/BOX_PLAN.md). Write-up with photos:
+[vu2cpl.com/projects/rgo-spe-cat](https://vu2cpl.com/projects/rgo-spe-cat/).
 
 ![The finished box](docs/photos/front.jpg)
 
