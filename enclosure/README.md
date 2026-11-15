@@ -5,7 +5,7 @@ wiring: [`docs/BOX_PLAN.md`](../docs/BOX_PLAN.md).
 
 ![preview](preview.png)
 
-**Status: draft 7 (2026-11-15), not printed.** Draft 6 was test-fitted: the board moved around, and the 1/8" plugs could not seat through the 2.5 mm wall. Draft 7 fixes both. Outer size 107 × 75 ×
+**Status: draft 7 (2026-11-15), printed and installed; in service.** Draft 6 was test-fitted: the board moved around, and the 1/8" plugs could not seat through the 2.5 mm wall. Draft 7 fixes both. Outer size 107 × 75 ×
 27.8 mm. The base and lid render without errors and all layout checks pass.
 The dongle is measured (28 × 29 × 11.3 mm body + 14 mm USB plug, jacks
 12.4 mm apart, centres 6.35 mm up). Other sizes are datasheet values or guesses. They are marked `CHECK` in

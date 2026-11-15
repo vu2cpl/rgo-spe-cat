@@ -1,7 +1,15 @@
 # Box plan: RGO ONE CAT + audio interface
 
-**Status: enclosure draft 7 (2026-11-15).** The model is
-`enclosure/rgo_box.scad`. It is not printed yet.
+**Status: built, installed and working (2026-11-15).** Enclosure draft 7
+(`enclosure/rgo_box.scad`) printed and installed. Radio CAT, RX and TX
+audio, RTS PTT and the SPE CAT link all tested on air.
+
+![Wiring as built](wiring.svg)
+
+*Wiring as built, 2026-11-15. Both audio lines run direct (no resistors).
+Not shown: the radio's RCA linear-amp socket → SPE KEY IN (separate lead),
+and the box's USB charger. Radio: menu 02 LINE IN ON, menu 33 RTS ON, VOX
+off; WSJT-X PTT Method = CAT.*
 
 **Decided:**
 - The audio dongle goes in the box, kept simple: no transformers, no
@@ -227,8 +235,11 @@ lining later.
    load, with WSJT-X. Set the levels.
 2. Measure the dongle, the board and the cable; set the `CHECK` values.
 3. Print the enclosure.
-4. Fit, wire and test again: CAT, amp follow, WSJT-X audio, PTT.
-5. Update HANDOVER and README with the as-built wiring and photos.
+4. ~~Fit, wire and test again: CAT, amp follow, WSJT-X audio, PTT.~~ Done
+   2026-11-15 (RX 35 dB with preamp, TX ALC 1–2 dots at full Mac output,
+   RTS PTT, SPE follows).
+5. Update HANDOVER and README with the as-built wiring (done) and photos
+   (still to add).
 
 ## Parts to source
 

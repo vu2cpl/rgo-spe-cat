@@ -7,6 +7,10 @@
 
 ## Current state
 
+- **In service 2026-11-15:** box built and installed; radio CAT, RX audio
+  (35 dB, preamp on), TX audio (ALC 1–2 dots, Mac output max), RTS PTT and
+  the SPE CAT link all working. Wiring: `docs/wiring.svg`.
+
 - **Firmware written and builds** (RAM 15.8 %, flash 17.3 %). All modules are in
   place: FT232R USB host driver, radio poller, SPE output, TCP CAT, MQTT, OTA.
 - **Flashed and running on an S3 N16R8** (MAC `ac:27:6e:a5:97:2c`, 16 MB
@@ -303,6 +307,10 @@ radio → SPE path doesn't need Wi-Fi.
 
 ## What changed
 
+- **2026-11-15** — **SPE CAT cable wired through the new box and tested:
+  working** (Manoj). Box now fully in service: radio CAT, RX/TX audio, RTS
+  PTT, SPE follow. As-built wiring diagram added: `docs/wiring.svg`, shown
+  in BOX_PLAN.
 - **2026-11-15** — PTT: CAT TX is display-only. RTS PTT added to the
   firmware (flashed by OTA) and working with menu 33 ON + menu 02 LINE IN
   ON; that is now the PTT method (VOX also works). TX level: Mac output at max
@@ -316,7 +324,8 @@ radio → SPE path doesn't need Wi-Fi.
   goes straight to the dongle mic input, WSJT-X shows ~25 dB (usable).
   RX level 35 dB with the radio preamp on. TX audio reaches the dongle
   output (headphone check) but the radio does not transmit when keyed over
-  CAT — see "PTT via CAT does NOT work" above. SPE CAT not yet connected.
+  CAT — see "PTT via CAT does NOT work" above. (Later the same day: RTS
+  PTT working, and the SPE CAT cable wired and tested — see below.)
 - **2026-11-15** — `docs/BOX_PLAN.md` now has both full DB15 pinouts:
   RGO ONE ACC1 (manual §5.5) and SPE CAT (1.5K-FA manual §12.1), each
   marked with what the cable uses and which pins must stay open.
