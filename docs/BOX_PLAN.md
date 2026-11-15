@@ -106,7 +106,10 @@ no resistors: WSJT-X shows **about 25 dB**. That is usable (WSJT-X wants
 roughly 20–40 dB; decoding does not depend on the exact level). To confirm
 there is enough level, disconnect the antenna: if the reading drops by
 10 dB or more, band noise is above the dongle's own noise floor and the
-level is fine.
+level is fine. **Measured: 25 dB with the antenna on, 15 dB with it off**
+(a 10 dB drop). That just passes: band noise sets the noise floor, not the
+dongle. If you ever want more margin, a small audio preamp before the
+dongle would add it. The cable itself needs no further changes.
 
 **TX level:** set it with the Mac's output volume and the radio's mic gain,
 so the radio shows no ALC. The 1 k gives the dongle a proper load.
