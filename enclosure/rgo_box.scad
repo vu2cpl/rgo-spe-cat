@@ -4,33 +4,33 @@
 // LID with a locating lip. 4 × M3 screws go down through the lid into M3
 // heat-set inserts in the base corner posts.
 //
-// Layout (looking down). ALL connectors are on ONE panel — the back wall:
+// Layout (looking down). All connectors are on the front panel; only the
+// PC cable leaves through a notch in the back wall, straight behind the dongle:
 //
-//     ┌───────────────────────────────────────────┐
+//     ┌──────────────────┤PC├─────────────────────┐
 //     │ ●                                       ● │
 //     │                [ ext  ]                   │
 //     │   ┌──────┐     [socket]                   │
 //     │   │  S3  │     [CM108 ]                   │
 //     │   │board │     [dongle]                   │
 //     │ ● └──────┘     [      ]                 ● │
-//     └───USB-C x2─────IN──OUT───AMP───cable──┘
-//        RIG  PWR     1/8" jacks  2.5mm  PC notch
+//     └───USB-C x2─────IN──OUT───AMP────────────┘
+//        RIG  PWR     1/8" jacks  2.5mm
 //
 // - S3 board: its two USB-C sockets poke into one slot, so the radio and
-//   charger cables plug straight into the board. It sits on a rib between
-//   its header rows (foam tape), with a stop block behind it so plugging a
-//   cable can't push it back.
-// - CM108 dongle: lies in a cradle with its jack end against the panel; its
-//   own mic (IN) and headphone (OUT) jacks show through two holes. The radio
+//   charger cables plug straight into the board. Held without tape: rib
+//   below, stop block behind, corner fences at the sides, lid fingers above.
+// - CM108 dongle: its jack end sits in a panel window, flush with the
+//   outside, so 1/8" plugs seat fully; stop posts behind its body. The radio
 //   cable (DB15 plug on ACC1, resistors in its hood, two 1/8" plugs) plugs in
 //   there. A zip tie through the cradle holds it. The USB extension socket
 //   sits behind it on a zip-tie anchor.
 // - AMP: a 2.5 mm stereo (TRS) panel jack — the amp needs only 3 wires. A
 //   different size from the 1/8" audio jacks, so the cables can't be mixed
 //   up. Amp cable: 2.5 mm TRS plug → DB15 male (amp).
-// - PC cable leaves through a notch at the top of the panel; the lid has a
-//   tab that closes it down to cable size, so the USB-A plug never has to
-//   pass through a hole.
+// - PC cable runs straight back from the extension socket and leaves
+//   through a notch at the top of the BACK wall, so no U-turn is needed and
+//   longer socket housings fit. A lid tab closes the notch to cable size.
 //
 // Values marked CHECK are from datasheets / guesses: measure your parts and
 // change them before printing. part = "assembly" shows ghost parts.
@@ -118,9 +118,10 @@ amp_jack_hole_d = 6.2;   // jack thread measured ~5.8 mm
 amp_jack_body   = 11;    // CHECK width of the jack body behind the panel
 
 /* [PC cable notch, back wall] */
-notch_x = 90;     // notch centre from the inner left wall
-notch_w = 6.5;     // CHECK: your USB extension cable diameter + 1
-notch_d = 12;      // notch depth from the top of the wall
+// As cut on the draft-6 box (2026-11-15): 6 wide × 14 deep, behind the dongle.
+notch_x = dongle_x; // notch centre from the inner left wall (in line with the dongle)
+notch_w = 6;       // USB extension cable diameter + clearance
+notch_d = 14;      // notch depth from the top of the wall
 cable_h = 6;       // hole left for the cable once the lid tab is in
 
 /* [Zip-tie anchors] */
@@ -168,7 +169,9 @@ module labels() {
     panel_text(in_jack_x,  floor_t + pad_h + dongle_h + window_clear + 3.2, "IN", 3.2);
     panel_text(out_jack_x, floor_t + pad_h + dongle_h + window_clear + 3.2, "OUT", 3.2);
     panel_text(pcb_x0 + pcb_w/2, usbc_z - usbc_slot_h/2 - 4, "RIG    PWR", 3.5);
-    panel_text(notch_x, base_h - notch_d - 5, "PC");
+    // "PC" on the outside of the back wall, below the notch
+    translate([ix(notch_x), out_d - 0.6, base_h - notch_d - 5]) rotate([90, 0, 180]) linear_extrude(1)
+        text("PC", size = 4, halign = "center", valign = "center", font = "Liberation Sans:style=Bold");
 }
 
 module usbc_slot() {
@@ -204,7 +207,7 @@ module cradle() {
 }
 
 module notch() {
-    translate([ix(notch_x) - notch_w/2, -1, base_h - notch_d]) cube([notch_w, wall + 2, notch_d + 1]);
+    translate([ix(notch_x) - notch_w/2, out_d - wall - 1, base_h - notch_d]) cube([notch_w, wall + 2, notch_d + 1]);
 }
 
 // ---------- base ----------
@@ -261,7 +264,7 @@ module lid() {
             translate([ix(pcb_x0 + 2), iy(lip_in + lip_t), pcb_z + pcb_t + usbc_h + press_gap])
                 cube([pcb_w - 4, usbc_bar_l - lip_in - lip_t, base_h - (pcb_z + pcb_t + usbc_h + press_gap) + eps]);
             // tab that closes the cable notch down to cable size
-            translate([ix(notch_x) - notch_w/2 + 0.2, 0, base_h - (notch_d - cable_h)])
+            translate([ix(notch_x) - notch_w/2 + 0.2, out_d - wall - lip_in - lip_t, base_h - (notch_d - cable_h)])
                 cube([notch_w - 0.4, wall + lip_in + lip_t, notch_d - cable_h + eps]);
         }
         // clear the lip around the posts
@@ -296,8 +299,7 @@ assert(amp_jack_x - amp_jack_body/2 >= dongle_x + cradle_w/2 + rail_t + 1, "AMP 
 assert(dongle_y0 + dongle_l + 22 <= in_d, "no room behind the dongle for the extension socket");
 assert(ext_sock_w/2 <= dongle_w/2 - 4 - 0.5, "extension socket hits the dongle stop posts");
 assert(usbc_slot_w/2 + pcb_x0 + pcb_w/2 <= dongle_x - dongle_w/2 - window_clear - 3, "USB-C slot crowds the dongle window");
-assert(notch_x - notch_w/2 >= amp_jack_x + amp_jack_body/2 + 1, "cable notch hits the AMP jack");
-assert(notch_x + notch_w/2 <= in_l - post_d, "cable notch hits a corner post");
+assert(notch_x - notch_w/2 >= post_d && notch_x + notch_w/2 <= in_l - post_d, "cable notch hits a corner post");
 assert(pcb_x0 >= post_d, "board clashes with a corner post");
 
 if (part == "assembly") {

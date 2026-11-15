@@ -13,7 +13,8 @@ The dongle is measured (28 × 29 × 11.3 mm body + 14 mm USB plug, jacks
 
 ## Panel
 
-All connectors are on one panel, the back wall. Seen from outside, left to
+All connectors are on the front panel, except the PC cable, which leaves
+through a notch in the back wall straight behind the dongle. Front panel seen from outside, left to
 right:
 
 | Label | What | Cable |
@@ -23,7 +24,7 @@ right:
 | IN | CM108 mic jack (1/8") | ← radio RX audio |
 | OUT | CM108 headphone jack (1/8") | → radio TX audio |
 | AMP | 2.5 mm stereo (TRS) jack | → SPE amp (2.5 mm plug → DB15 male cable, 3 wires; pinout in `docs/BOX_PLAN.md`) |
-| PC | Notch for the dongle's USB extension cable | → PC |
+| PC (back wall) | 6 × 14 mm notch behind the dongle for its USB extension cable | → PC |
 
 The radio audio cable has a DB15 male plug on ACC1, with the resistors
 inside its hood, and two 1/8" plugs on the other end. It is not part of the
@@ -44,20 +45,20 @@ box. See `docs/BOX_PLAN.md`.
   extension socket sits behind it on a zip-tie anchor.
 - **AMP jack:** a 2.5 mm stereo panel jack, a different size from the 1/8"
   audio jacks so the cables can't be swapped.
-- **PC cable notch:** a tab on the lid closes it down to cable size, so the
-  USB-A plug never has to go through a hole.
+- **PC cable notch (back wall):** in line with the dongle, so the cable
+  runs straight out of the extension socket with no U-turn. A tab on the lid
+  closes it down to cable size, so the USB-A plug never has to go through a
+  hole.
 - **Lid:** 4 × M3 countersunk screws into heat-set inserts in the corner
   posts. A 3.2 × 18 mm slot sits over the status LED, just behind the USB-C
-    sockets.
+  sockets.
 
 ## Check before printing
 
 | Parameter | Default | Measure |
 |---|---|---|
-| `notch_w` | 6.5 | PC cable diameter + 1 (cable not chosen yet; 6.5 suits a ~5.5 mm USB cable). Only the notch and the lid tab depend on it |
 | `amp_jack_body` | 11 | The AMP jack's body width behind the panel (the 6.2 mm hole is confirmed for its ~5.8 mm thread) |
 | `insert_hole_d` | 4.0 | The bore your M3 heat-set inserts need |
-| `ext_sock_w` | 18 | Width of the USB extension's socket housing (must pass between the dongle stop posts) |
 
 ## Use
 

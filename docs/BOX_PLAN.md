@@ -8,7 +8,9 @@
   trimpots.
 - Power comes from a USB charger.
 - The enclosure is 3D-printed.
-- **All connectors are on one panel.**
+- **All connectors are on one panel**, except the PC cable: it leaves
+  straight back through a notch in the back wall (2026-11-15), so any
+  extension socket length up to about 40 mm fits.
 - The radio audio goes through a separate cable (a DB15 plug to two 1/8"
   plugs) into the dongle's own jacks.
 
@@ -23,7 +25,7 @@
 PTT stays on **CAT** (already verified with WSJT-X). No PTT wire is needed,
 and no GPIO hack on the CM108.
 
-## Panel (back wall, left to right from outside)
+## Panel (front wall, left to right from outside)
 
 | Label | Connector | Goes to |
 |---|---|---|
@@ -32,7 +34,7 @@ and no GPIO hack on the CM108.
 | IN | CM108 mic jack, 1/8" | Radio audio cable, RX plug |
 | OUT | CM108 headphone jack, 1/8" | Radio audio cable, TX plug |
 | AMP | 2.5 mm stereo (TRS) jack, panel mount | SPE CAT: 2.5 mm TRS plug → DB15 male cable (see below) |
-| PC | Cable notch, closed by a tab on the lid | PC (CM108 audio) |
+| PC | **Back wall:** 6 × 14 mm cable notch behind the dongle, closed by a tab on the lid | PC (CM108 audio) |
 
 The status LED shows through a window in the lid. Put a ferrite clamp on
 every cable leaving the box (there is 1 kW of RF nearby).

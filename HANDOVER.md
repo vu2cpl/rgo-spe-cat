@@ -282,6 +282,13 @@ radio → SPE path doesn't need Wi-Fi.
 
 ## What changed
 
+- **2026-11-15** — PC cable now leaves through a 6 × 14 mm notch in the
+  BACK wall, straight behind the dongle (Manoj cut this into the draft-6
+  box). The cable no longer U-turns to the front panel, so extension
+  sockets up to ~40 mm long fit; the front-panel notch is gone. Socket
+  width (`ext_sock_w` 18) confirmed OK. A panel-mount USB-B pigtail
+  (PSG03801) was considered and dropped: its 37 mm flange and ~45–50 mm
+  female-A end would grow the box to ~135 × 100 mm.
 - **2026-11-15** — Enclosure draft 7, after a draft-6 test fit failed:
   the S3 board slid around (foam tape on a rib held nothing), and the two
   1/8" plugs could not seat in the dongle because the 2.5 mm wall stood
