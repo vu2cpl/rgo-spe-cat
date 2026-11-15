@@ -13,16 +13,16 @@
 
 - **Firmware written and builds** (RAM 15.8 %, flash 17.3 %). All modules are in
   place: FT232R USB host driver, radio poller, SPE output, TCP CAT, MQTT, OTA.
-- **Flashed and running on an S3 N16R8** (MAC `ac:27:6e:a5:97:2c`, 16 MB
-  flash, 8 MB PSRAM). On Wi-Fi at `192.168.30.191` (`rgo-spe-cat.local`); TCP
+- **Flashed and running on an S3 N16R8** (16 MB
+  flash, 8 MB PSRAM). On Wi-Fi at a DHCP-reserved IoT-VLAN address (`<box-ip>`, `rgo-spe-cat.local`); TCP
   CAT on 4533 answers in ~5 ms (`?;` with no radio attached, as designed).
 - **Radio link verified 2026-11-14:** RGO ONE enumerates (0403:6001), FTDI
   configured at 19200, `[RIG] 7095250 Hz 40m LSB RX`, LED green. Over TCP
   4533: `FA;`/`IF;` from cache, `FB;` forwarded live, ~7 ms round trip.
-- **Hamlib verified 2026-11-14:** `rigctl -m 2028 -r 192.168.30.191:4533`
+- **Hamlib verified 2026-11-14:** `rigctl -m 2028 -r <box-ip>:4533`
   reads freq / mode / VFO / PTT and sets freq; opens in ~3 s with no timeouts.
 - **WSJT-X verified 2026-11-14:** rig Kenwood TS-480, Serial Port field
-  `192.168.30.191:4533`, follows tuning and band changes. Tested with a
+  `<box-ip>:4533`, follows tuning and band changes. Tested with a
   separate config (`--rig-name=RGO`, `~/Library/Preferences/WSJT-X - RGO.ini`)
   so the main WSJT-X setup is untouched. Lag is at most WSJT-X's poll
   interval (1 s minimum); the S3 side adds ~7 ms.
@@ -191,7 +191,7 @@ red = no radio on USB · blinking blue = no Wi-Fi.
 
 ## MQTT
 
-- Broker `192.168.1.169:1883`, auth required; role `iot`, password in
+- Broker `<broker-ip>:1883` (`MQTT_HOST` in `secrets.h`), auth required; role `iot`, password in
   `include/secrets.h` (git-ignored; from the shack password manager).
 - `shack/rgo-spe-cat/status` — retained; `{"event":"online"}` on connect, LWT
   `{"event":"offline"}`, heartbeat every 30 s (`uptime_s`, `rssi`, `radio`).
@@ -315,7 +315,7 @@ radio → SPE path doesn't need Wi-Fi.
   firmware (flashed by OTA) and working with menu 33 ON + menu 02 LINE IN
   ON; that is now the PTT method (VOX also works). TX level: Mac output at max
   gives ALC 1–2 dots (OK, no headroom). OTA now via `./ota.sh` (call-back pinned to TCP 48266;
-  Manoj added 192.168.30.191 to the UniFi IoT → Mac OTA rule).
+  Manoj added the box to the UniFi IoT → Mac OTA rule).
 - **2026-11-15** — Draft-7 box printed and installed. Radio CAT through it
   verified (TCP 4533: `FA` 7.0278 MHz LSB, `FB` live). **RX audio far too
   low** (WSJT-X ~0 dB at full Mac input gain): the 10 k / 1 k divider was

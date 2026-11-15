@@ -65,7 +65,6 @@
 // Broker requires auth (since 2026-08-21). Role account + password come from
 // secrets.h — this device uses the iot role. Passwords are in the shack
 // password manager.
-#define MQTT_HOST       "192.168.1.169"
 #define MQTT_PORT       1883
 #define MQTT_CLIENT_ID  "rgo-spe-cat"
 #define MQTT_ENABLED    1
@@ -75,6 +74,10 @@
 #define T_RIG      "shack/rgo-spe-cat/rig"      // retained; {freq_hz, band, mode, tx, ok}
 
 #include "secrets.h"
+
+#ifndef MQTT_HOST
+#error "Set MQTT_HOST (broker address) in include/secrets.h"
+#endif
 
 #ifndef OTA_PASS
 #define OTA_PASS ""

@@ -51,8 +51,10 @@ python3 install.py     # bootstraps PlatformIO (macOS/Pi aware), verifies the bu
 1. On first boot the node opens Wi-Fi AP **`vu2cpl-rgo-spe-cat-setup`**
    (password `vu2cpl1234`). Join it, pick your network, enter its password.
    Creds persist in NVS.
-2. Copy `include/secrets.h.example` → `include/secrets.h` and set the MQTT role
-   password (from the shack password manager) and an OTA password.
+2. Copy `include/secrets.h.example` → `include/secrets.h` and set the MQTT
+   broker address (`MQTT_HOST`), the MQTT role password (from the shack
+   password manager), an OTA password, and the box's IP for `ota.sh`
+   (`OTA_HOST`).
    `secrets.h` is git-ignored.
 3. On the amp: SET → CAT → KENWOOD, baud 9600 (or set `SPE_BAUD` in
    `include/config.h` to match), then power-cycle the amp.
@@ -66,7 +68,7 @@ Hamlib rig that field takes the network address. The RGO ONE doesn't answer `MD;
 
 ## MQTT
 
-- Broker: `192.168.1.169:1883` (auth required — `iot` role account in `secrets.h`;
+- Broker: `MQTT_HOST` in `secrets.h`, port 1883 (auth required — `iot` role account in `secrets.h`;
   the broker ACL grants `iot` write on `shack/rgo-spe-cat/#`).
 - `shack/rgo-spe-cat/status` — retained; LWT `{"event":"offline"}`, 30 s heartbeat.
 - `shack/rgo-spe-cat/rig` — retained; `{"ok","freq_hz","band","mode","tx"}`.

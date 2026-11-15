@@ -73,7 +73,7 @@ def ensure_secrets():
     lv = os.path.join(HERE, "include", "secrets.h")
     if os.path.exists(ex) and not os.path.exists(lv):
         shutil.copyfile(ex, lv)
-        print("• Created include/secrets.h from example — fill in the MQTT password.")
+        print("• Created include/secrets.h from example — fill in MQTT_HOST, the MQTT password and OTA settings.")
 
 
 def main():
