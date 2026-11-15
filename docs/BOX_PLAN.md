@@ -4,6 +4,10 @@
 (`enclosure/rgo_box.scad`) printed and installed. Radio CAT, RX and TX
 audio, RTS PTT and the SPE CAT link all tested on air.
 
+![The finished box](photos/front.jpg)
+
+![Inside the box](photos/inside.jpg)
+
 ![Wiring as built](wiring.svg)
 
 *Wiring as built, 2026-11-15. Both audio lines run direct (no resistors).
@@ -238,8 +242,8 @@ lining later.
 4. ~~Fit, wire and test again: CAT, amp follow, WSJT-X audio, PTT.~~ Done
    2026-11-15 (RX 35 dB with preamp, TX ALC 1–2 dots at full Mac output,
    RTS PTT, SPE follows).
-5. Update HANDOVER and README with the as-built wiring (done) and photos
-   (still to add).
+5. ~~Update HANDOVER and README with the as-built wiring and photos.~~
+   Done 2026-11-15 (`docs/wiring.svg`, `docs/photos/`).
 
 ## Parts to source
 

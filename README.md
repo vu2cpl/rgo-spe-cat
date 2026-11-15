@@ -13,6 +13,8 @@ RTS, because the RGO ONE's own CAT `TX;` only shows TX without
 transmitting. Wiring: [`docs/wiring.svg`](docs/wiring.svg); full plan in
 [`docs/BOX_PLAN.md`](docs/BOX_PLAN.md).
 
+![The finished box](docs/photos/front.jpg)
+
 ## How it works
 
 ```
