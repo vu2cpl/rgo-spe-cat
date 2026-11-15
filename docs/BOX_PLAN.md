@@ -95,7 +95,15 @@ that no strand bridges any of them to 15 or the screen before you plug in.
 **Radio setting:** set **menu 02 LINE IN = E** (external), so TX audio comes
 from ACC1, not the front mic.
 
-**RX level:** the 10 k / 1 k divider (÷11) brings the line out down to mic
+> **Known fault (2026-11-15): RX audio far too low.** The 10 k / 1 k
+> divider (÷11) was chosen without knowing the line-out level, and was not
+> bench-tested before the cable was closed up. The RGO ONE's LINE OUT comes
+> from the AF preamp (MC33079, before the volume control), so it is already
+> near mic level. With ÷11, WSJT-X shows ~0 dB at full Mac input gain.
+> **Fix:** bridge the 10 k in the DB15 hood, keep the 1 k to ground, then set
+> the level with the Mac slider. Values below are the original (wrong) design.
+
+**RX level (original design, too low):** the 10 k / 1 k divider (÷11) brings the line out down to mic
 level. Set the final level with the Mac's input volume (Audio MIDI Setup),
 so WSJT-X shows about 30 dB on a quiet band. If the level is still too high
 or too low, change the 1 k. A smaller value makes it quieter.
