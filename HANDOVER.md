@@ -282,6 +282,9 @@ radio → SPE path doesn't need Wi-Fi.
 
 ## What changed
 
+- **2026-11-15** — `docs/BOX_PLAN.md` now has both full DB15 pinouts:
+  RGO ONE ACC1 (manual §5.5) and SPE CAT (1.5K-FA manual §12.1), each
+  marked with what the cable uses and which pins must stay open.
 - **2026-11-15** — LED window in the lid is now a 4 mm hole at the
   measured LED centre: 23 mm from the box's outer left edge, 20 mm from the
   outer front (panel) edge. Draft 6's slot sat ~13 mm in and missed it.

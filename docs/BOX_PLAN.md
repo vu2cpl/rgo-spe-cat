@@ -65,8 +65,32 @@ TX:  OUT plug (tip) ── 1k ──► ACC1 pin 10 (LINE IN +)   ← CM108 head
 | 15 | Ground | Screen → both plug sleeves |
 | 8 | PTT | Not used (PTT is on CAT) |
 
-The ACC1 pinout comes from the RGO ONE manual (2020 rev 2.00A and V6 rev
-1.01A agree).
+### ACC1 full pinout (radio, DB15 female on the rear panel)
+
+From the RGO ONE manual §5.5 (rev 1.01b; 2020 rev 2.00A and V6 rev 1.01A
+agree). The cable plug is DB15 **male**; on its solder side the numbering
+is mirrored, so go by the numbers moulded on the plug.
+
+| Pin | Signal | This cable |
+|---|---|---|
+| 1 | 13 V | **Leave open** |
+| 2 | VC (front panel supply voltage) | **Leave open** |
+| 3 | Not in use | — |
+| 4 | Not in use | — |
+| 5 | Not in use | — |
+| 6 | Not in use | — |
+| 7 | CWK (CW keying from an external source / PC) | — |
+| 8 | PTT | — (PTT is on CAT) |
+| 9 | LINE IN − | Joined to 15 in the hood |
+| 10 | LINE IN + (600 Ω) | TX audio, through 1 k from the OUT tip |
+| 11 | LINE OUT | RX audio, through 10 k (1 k to ground) to the IN tip |
+| 12 | 8 V RX (8 V while receiving) | **Leave open** |
+| 13 | 8 V TX (8 V while transmitting) | **Leave open** |
+| 14 | External power ON | **Leave open** (switches the radio on) |
+| 15 | Ground | Screen, both plug sleeves |
+
+Pins 1, 2, 12 and 13 carry voltage, and 14 switches the radio on. Check
+that no strand bridges any of them to 15 or the screen before you plug in.
 
 **Radio setting:** set **menu 02 LINE IN = E** (external), so TX audio comes
 from ACC1, not the front mic.
@@ -114,6 +138,34 @@ joined to pin 4 inside the DB15 hood, so it needs no wire of its own.
 | Tip | S3 GPIO17 (TX) through **220 Ω** | Core 1 | 10 (RX TTL) |
 | Ring | 10 k → GPIO18, 20 k GPIO18 → GND | Core 2 | 3 (TX TTL, 5 V) |
 | Sleeve | GND | Screen | 4 (GND), and 11 joined to 4 in the hood |
+
+### SPE DB15 CAT full pinout (amp, IN 1 / IN 2 "CAT" socket)
+
+From the Expert 1.5K-FA manual §12.1 (same on the 1K-FA, 1.3K-FA and
+2K-FA). The amp's socket takes a DB15 **male** cable plug.
+
+| Pin | Name | Function | This cable |
+|---|---|---|---|
+| 1 | RX 232 | RS-232 CAT (Kenwood / Yaesu) | — |
+| 2 | /TX-INH | Open collector, stops TX when grounded | — |
+| 3 | TX TTL | 5 V TTL CAT, amp → radio (the amp's `IF;` polls) | **Core 2** → box jack ring |
+| 4 | GND | Signal ground | **Screen** → box jack sleeve |
+| 5 | ALC | Parallel with the ALC phono socket | — |
+| 6 | DATA A | Band data bit A | — |
+| 7 | DATA C | Band data bit C | — |
+| 8 | REMOTE ON | 9–15 V turns the amp on | **Leave open** |
+| 9 | TX 232 | RS-232 CAT | — |
+| 10 | RX TTL | 5 V TTL CAT, radio → amp | **Core 1** → box jack tip |
+| 11 | KEN TTL | Ground it to select 5 V TTL Kenwood CAT | **Joined to 4** in the hood |
+| 12 | RELAY | Parallel with the RELAY phono socket | **Leave open** |
+| 13 | TX-INH | Normally to ground (550 Ω); +12 V stops TX | — |
+| 14 | DATA B | Band data bit B | — |
+| 15 | DATA D | Band data bit D | — |
+
+The amp's TTL CAT runs **inverted** (idles low); the firmware sets
+`SPE_INVERT`. Set the amp to SET → CAT → KENWOOD, 9600 baud, and
+power-cycle it after any CAT change. Pin 12 (RELAY) is the amp's keying
+line: keep it isolated, or the amp could key unexpectedly.
 
 A jack shorts its contacts for a moment as a plug goes in. The 220 Ω keeps
 GPIO17 safe during that short (the ring line already has its 10 k). Plug
