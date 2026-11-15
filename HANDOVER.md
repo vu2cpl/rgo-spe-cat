@@ -26,7 +26,10 @@
   (and `rigctl T 1`, WSJT-X Tune) make the radio *show* TX and set the TX
   flag in `IF;`, but it gives **no RF and does not key the amp**. The
   2026-11-14 "verified" note was based on the display/flag only; RF was
-  never checked. The manual's PC PTT route is the USB **RTS** line
+  never checked. Manoj confirmed on air: the hand-mic PTT keys the radio
+  properly (RF out, amp keys), CAT TX does not — it is a display-only TX
+  state, and ACC1 LINE IN audio is not passed in it. Real PTT has to come
+  from a hardware/RTS line. The manual's PC PTT route is the USB **RTS** line
   (menu 33). Planned fix (not started, deferred by Manoj): box firmware
   raises FTDI RTS on `TX…;`, drops it on `RX;`, with a fail-safe timeout
   and drop on client disconnect; radio menu 33 = ON; test polarity into a
