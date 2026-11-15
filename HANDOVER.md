@@ -288,8 +288,10 @@ radio → SPE path doesn't need Wi-Fi.
   between plug body and jack. Now the dongle's jack end sits in a panel
   window, flush with the outside, with stop posts behind it. The board is
   boxed in by corner fences, the stop block and two lid fingers (module
-  shield pad, USB-C socket bar), no tape. USB-C slot raised 7 → 8.5 mm for
-  plug overmolds. New CHECK values: `module_h`, `press_y`, `ext_sock_w`.
+  shield pad, USB-C socket bar), no tape. USB-C slot stays 7 mm (plugs
+  seated fine in the test fit). Module shield 3.2 mm and press point 46 mm
+  confirmed by Manoj; `ext_sock_w` is still CHECK. The draft-6 print was
+  made usable by drilling out the IN/OUT holes.
 - **2026-11-14** — Enclosure: S3 board measured 63.5 × 28 mm (with the
   antenna end); the LED is just behind the USB-C sockets, so the lid has a
   3.2 × 18 mm slot across the board there.

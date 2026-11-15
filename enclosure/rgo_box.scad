@@ -66,14 +66,14 @@ pin_clear = 12;    // floor → board underside. Wires are soldered to the heade
                    // 12 clears downward headers (~8.5) plus the solder joints.
 rib_w     = 8;     // support rib, between the header rows
 usbc_slot_w = 27;  // one slot over both USB-C sockets (overmolds fit side by side)
-usbc_slot_h = 8.5; // tall enough for a USB-C plug's overmold, so it can seat fully
+usbc_slot_h = 7;   // proven: USB-C plugs seat fully in the draft-6 test fit
 // Board retention: no foam tape. Rib below, wall in front, stop block behind,
 // four corner fences at the sides, and two lid fingers pressing down from above.
 fence_t     = 1.6;   // corner fence thickness
 fence_l     = 5;     // corner fence length along the board edge
 fence_clear = 0.3;   // gap between fence and board edge
-module_h    = 3.2;   // CHECK: ESP32-S3 module shield height above the board top
-press_y     = 46;    // CHECK: lid press point on the module shield, from the board's USB end
+module_h    = 3.2;   // ESP32-S3 module shield height above the board top (confirmed)
+press_y     = 46;    // (confirmed) lid press point on the module shield, from the board's USB end
 press_d     = 6;
 press_gap   = 0.3;   // gap between lid fingers and the parts they press on
 usbc_h      = 3.1;   // USB-C socket height above the board top (measured)

@@ -35,7 +35,8 @@ box. See `docs/BOX_PLAN.md`.
   header rows. The wall is in front of it, a stop block behind it, and four
   corner fences at its sides. Two fingers on the lid press it down: a pad on
   the ESP32 module shield and a bar on the USB-C socket shells. Its two
-  USB-C sockets show through one 8.5 mm slot, tall enough for plug overmolds.
+  USB-C sockets show through one 7 mm slot (plugs seated fine in the draft-6
+  test fit).
 - **CM108 dongle:** its jack end sits in a window in the panel, flush with
   the outside, so the 1/8" plugs go fully home whatever their body size.
   It lies in a cradle; two stop posts behind its body take the push when a
@@ -56,7 +57,6 @@ box. See `docs/BOX_PLAN.md`.
 | `notch_w` | 6.5 | PC cable diameter + 1 (cable not chosen yet; 6.5 suits a ~5.5 mm USB cable). Only the notch and the lid tab depend on it |
 | `amp_jack_body` | 11 | The AMP jack's body width behind the panel (the 6.2 mm hole is confirmed for its ~5.8 mm thread) |
 | `insert_hole_d` | 4.0 | The bore your M3 heat-set inserts need |
-| `module_h`, `press_y` | 3.2, 46 | Height of the ESP32-S3 module shield above the board, and where its centre is from the USB end. The lid pad presses there |
 | `ext_sock_w` | 18 | Width of the USB extension's socket housing (must pass between the dongle stop posts) |
 
 ## Use
