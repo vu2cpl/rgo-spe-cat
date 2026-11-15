@@ -50,8 +50,9 @@ box. See `docs/BOX_PLAN.md`.
   closes it down to cable size, so the USB-A plug never has to go through a
   hole.
 - **Lid:** 4 × M3 countersunk screws into heat-set inserts in the corner
-  posts. A 3.2 × 18 mm slot sits over the status LED, 23 mm from the
-  board's USB end (measured).
+  posts. A 4 mm hole sits over the status LED: centre 23 mm from the box's
+  left edge and 20 mm from the front (panel) edge, outside dimensions
+  (measured).
 
 ## Check before printing
 

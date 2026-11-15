@@ -82,13 +82,14 @@ usbc_z_above_pcb = 1.55; // socket centre above the board's top face (measured: 
 
 /* [Status LED window] */
 led_window = true;
-// The RGB LED (a small square part) is 23 mm from the board's USB end
-// (measured 2026-11-15). The window is a slot across the board there, so it
-// shows the LED wherever it sits across the width.
-led_x = 14;        // slot centre, from the board's left edge
-led_y = 23;        // slot centre, from the board's USB end (measured)
-led_d = 3.2;       // slot width
-led_slot_l = 18;   // slot length, across the board
+// The RGB LED (a small square part), measured on the draft-6 box 2026-11-15:
+// centre 23 mm from the box's outer left edge and 20 mm from the outer front
+// (panel) edge → 11.5 / 17.5 mm from the board's left edge / USB end.
+// A single round hole over it.
+led_x = 23 - wall - pcb_x0; // hole centre, from the board's left edge (measured)
+led_y = 20 - wall; // hole centre, from the board's USB end (measured)
+led_d = 4;         // hole diameter
+led_slot_l = 4;    // = led_d gives a round hole; longer makes a slot across the board
 
 /* [USB audio dongle — jacks through the panel] */
 // Measured 2026-11-14 (black aluminium "USB Audio Adapter"): body 28 × 29 ×
