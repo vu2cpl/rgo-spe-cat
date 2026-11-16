@@ -94,6 +94,8 @@ flash.sh / monitor.sh   serial-port pickers (never pin the port)
 ota.sh                  Wi-Fi upload through the UniFi IoT → Mac rule
 install.py              toolchain bootstrap, macOS/Pi branch
 enclosure/              3D-printed box (OpenSCAD); docs/BOX_PLAN.md has the plan + audio wiring
+docs/writeups/          self-contained HTML write-ups for the RGO ONE and SPE groups
+docs/history/           original 2026-11-13 design note (superseded by HANDOVER.md)
 ```
 
 See `HANDOVER.md` for the full design, measured radio facts and open items.

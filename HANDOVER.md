@@ -1,7 +1,7 @@
 # RGO ONE SPE CAT Server — Project Handover
 *For continuation in a new Claude session*
 
-**Created:** 2026-11-14 · **Last updated:** 2026-11-15 · **Type:** ESP firmware (ESP32-S3 N16R8)
+**Created:** 2026-11-14 · **Last updated:** 2026-11-16 · **Type:** ESP firmware (ESP32-S3 N16R8)
 
 ---
 
@@ -306,6 +306,13 @@ radio → SPE path doesn't need Wi-Fi.
   radio's DTR/RTS PTT/key setting before probing.
 
 ## What changed
+
+- **2026-11-16** — Merged the loose pre-repo folder `~/projects/RGO one cat `
+  (trailing space) into the repo, then trashed it. The two group write-ups
+  are now in `docs/writeups/` (`-for-rgo-group.html`, `-for-spe-group.html`;
+  self-contained, images embedded, checked free of IPs and passwords before
+  commit). The original 2026-11-13 design note is kept as
+  `docs/history/handover-2026-11-13.md`; this file superseded it.
 
 - **2026-11-15** — **Repo made public** (Manoj: scrub IPs, then public).
   Shack addresses moved to the git-ignored `secrets.h` (`MQTT_HOST`,
