@@ -96,7 +96,7 @@ ota.sh                  Wi-Fi upload through the UniFi IoT → Mac rule
 install.py              toolchain bootstrap, macOS/Pi branch
 enclosure/              3D-printed box (OpenSCAD); docs/BOX_PLAN.md has the plan + audio wiring
 docs/writeups/          self-contained HTML write-ups for the RGO ONE and SPE groups
-docs/SOUND_CARD.md      the USB audio dongle as the Mac sees it ("Cable Creation", 0D8C:0014)
+docs/SOUND_CARD.md      the USB audio dongles as the Mac sees them (box: "USB Audio Device"; spare: "Cable Creation")
 docs/history/           original 2026-11-13 design note (superseded by HANDOVER.md)
 ```
 

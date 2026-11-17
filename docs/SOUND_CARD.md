@@ -1,12 +1,35 @@
-# Sound card: C-Media USB dongle ("Cable Creation")
+# Sound cards: C-Media USB dongles
 
 The box's audio interface is a C-Media CM108-class USB sound dongle. It
 carries RX audio from the radio's ACC1 LINE OUT to the PC, and TX audio
 from the PC to ACC1 LINE IN. Wiring and levels are in
-[`BOX_PLAN.md`](BOX_PLAN.md). This page records how the dongle appears
-on the Mac.
+[`BOX_PLAN.md`](BOX_PLAN.md).
 
-## As detected on the Mac (2026-11-17)
+Two dongles with the same chip ID (`0D8C:0014`) have been used on the
+Mac. They differ in the name they report, and apps select by that name:
+
+| | Dongle A: tested in the box | Dongle B: detected 2026-11-17 |
+|---|---|---|
+| Name in macOS / WSJT-X | `USB Audio Device` | `Cable Creation` |
+| Vendor ID : Product ID | `0D8C:0014` | `0D8C:0014` |
+| Used for | All on-air tests 2026-11-15: RX ~25 dB (35 dB with radio preamp), TX ALC 1–2 dots at full Mac output | Not tested on the radio yet |
+| Saved in | `WSJT-X.ini` and `JTDX-VU - RGO one.ini` (Sound In/Out = `USB Audio Device`) | No app config yet |
+
+A CM108-class chip reports its name from its own EEPROM, so the
+different names mean different physical dongles. Dongle A was not
+plugged into the Mac when dongle B was detected.
+
+**If dongle B replaces dongle A:**
+
+- Pick `Cable Creation` as Sound In and Sound Out in WSJT-X / JTDX. The
+  saved `USB Audio Device` setting will not find it.
+- Measure the levels again (RX dB with antenna on and off, TX ALC). Mic
+  gain and output level can differ between dongle makes, so the 2026-11-15
+  figures may not carry over.
+- Check its size before fitting it in the box. The enclosure cradle is
+  cut for dongle A (28 × 29 × 11.3 mm body, jacks 12.4 mm apart).
+
+## Dongle B as detected on the Mac (2026-11-17)
 
 Read from the Mac mini (macOS) with the dongle plugged in, using
 `system_profiler SPUSBHostDataType SPAudioDataType`, `ioreg` and a
@@ -44,7 +67,7 @@ unrelated to this box.
 ## Notes
 
 - **Name to pick in WSJT-X:** Settings → Audio → Input and Output =
-  `Cable Creation`. Input channel Mono (or Left), output channel Mono or
+  `Cable Creation` for dongle B, `USB Audio Device` for dongle A. Input channel Mono (or Left), output channel Mono or
   Left. Keep the Mac's Audio MIDI Setup rate at 48 kHz.
 - **The UID contains the USB location (`133000`).** Moving the dongle to
   another USB port or hub changes the UID. WSJT-X stores the device by
@@ -55,16 +78,16 @@ unrelated to this box.
 - **USB 1.1 full speed** is normal for this chip and is plenty for one
   mono 48 kHz input and one stereo 48 kHz output.
 - **VOX caution still applies:** if radio VOX is on, any Mac sound routed
-  to this device keys the transmitter. Keep system sounds off it.
+  to the dongle in use keys the transmitter. Keep system sounds off it.
 
 ## How to check it again
 
 ```bash
-system_profiler SPUSBHostDataType | grep -A10 -i 'cable creation'
+system_profiler SPUSBHostDataType | grep -B2 -A10 -i '0x0d8c'
 ```
 
 ```bash
-system_profiler SPAudioDataType | grep -A8 -i 'cable creation'
+system_profiler SPAudioDataType | grep -A8 -iE 'cable creation|usb audio device'
 ```
 
 On Linux (for example a Pi), it shows as `0d8c:0014` in `lsusb` and as a

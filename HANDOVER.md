@@ -307,12 +307,14 @@ radio → SPE path doesn't need Wi-Fi.
 
 ## What changed
 
-- **2026-11-17** — Sound card detected on the Mac and documented in
-  `docs/SOUND_CARD.md`: C-Media `0D8C:0014`, CoreAudio name **"Cable
-  Creation"**, USB 1.1 full speed, no serial number, mono in / stereo out,
-  16-bit at 44.1 or 48 kHz (48 kHz in use). Device UID includes the USB
-  location, so it changes if the dongle moves port; WSJT-X selects by name
-  and is not affected. BOX_PLAN parts table and README now point to it.
+- **2026-11-17** — Second sound card detected and documented in
+  `docs/SOUND_CARD.md`: C-Media `0D8C:0014` again, but it reports
+  **"Cable Creation"** (USB 1.1 full speed, no serial number, mono in /
+  stereo out, 16-bit 44.1/48 kHz). The dongle used for all 2026-11-15
+  tests reports **"USB Audio Device"** (saved in `WSJT-X.ini` and
+  `JTDX-VU - RGO one.ini`), so this is a different unit, untested on the
+  radio. If it replaces the box dongle: reselect it by name in
+  WSJT-X/JTDX, remeasure RX dB and TX ALC, and check it fits the cradle.
 
 - **2026-11-16** — Merged the loose pre-repo folder `~/projects/RGO one cat `
   (trailing space) into the repo, then trashed it. The two group write-ups

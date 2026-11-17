@@ -31,7 +31,7 @@ off; WSJT-X PTT Method = CAT.*
 | Part | Job |
 |---|---|
 | ESP32-S3 board (YD-ESP32-S3 N16R8) | CAT: radio USB ↔ SPE amp, TCP CAT, MQTT (as now) |
-| C-Media CM108 USB sound dongle (`0D8C:0014`, shows on the Mac as **"Cable Creation"**; details in [`SOUND_CARD.md`](SOUND_CARD.md)), **left whole in its shell**, jacks facing the panel | Audio to and from the PC for WSJT-X. Mono mic in, stereo out, 44.1/48 kHz 16-bit, no driver needed on macOS |
+| C-Media CM108 USB sound dongle (`0D8C:0014`, shows on the Mac as **"USB Audio Device"**; a second `0D8C:0014` dongle, "Cable Creation", is compared in [`SOUND_CARD.md`](SOUND_CARD.md)), **left whole in its shell**, jacks facing the panel | Audio to and from the PC for WSJT-X. Mono mic in, stereo out, 48 kHz, no driver needed on macOS |
 | Short USB extension (dongle → out of the box) | Dongle's USB to the PC |
 
 PTT was planned on **CAT**, but the RGO ONE ignores CAT `TX;` for real
