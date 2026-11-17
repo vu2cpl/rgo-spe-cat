@@ -245,6 +245,10 @@ radio → SPE path doesn't need Wi-Fi.
 - [x] ~~MQTT: put the `iot` password in `secrets.h`~~ — done; broker ACL grant `shack/rgo-spe-cat/#` added 2026-11-14
 - [x] ~~Confirm `shack/rgo-spe-cat/status` and `/rig` arrive~~ — seen in MQTT Explorer 2026-11-14
 - [x] ~~Set `OTA_PASS` in `secrets.h`~~ — done 2026-11-14
+- [ ] Sound card: dongle B ("Cable Creation") is untested on the radio.
+  If it replaces dongle A, see `docs/SOUND_CARD.md` (reselect by name, Mac
+  levels to max, remeasure, check fit). Plug A in to fill its "not
+  recorded" fields.
 - [ ] Optional: small status web page (deferred; MQTT + LED cover it for now)
 
 ## Next steps
@@ -315,6 +319,8 @@ radio → SPE path doesn't need Wi-Fi.
   `JTDX-VU - RGO one.ini`), so this is a different unit, untested on the
   radio. If it replaces the box dongle: reselect it by name in
   WSJT-X/JTDX, remeasure RX dB and TX ALC, and check it fits the cradle.
+  SOUND_CARD.md also has a side-by-side spec table (dongle A's column from
+  macOS's cached CoreAudio settings; some fields need it plugged in).
 
 - **2026-11-16** — Merged the loose pre-repo folder `~/projects/RGO one cat `
   (trailing space) into the repo, then trashed it. The two group write-ups
