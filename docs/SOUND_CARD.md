@@ -11,9 +11,27 @@ Mac. They differ in the name they report, and apps select by that name:
 | | Dongle A: tested in the box | Dongle B: detected 2026-11-17 |
 |---|---|---|
 | Name in macOS / WSJT-X | `USB Audio Device` | `Cable Creation` |
+| Manufacturer string | C-Media Electronics Inc. | C-Media Electronics Inc. |
 | Vendor ID : Product ID | `0D8C:0014` | `0D8C:0014` |
+| Device version (bcdDevice) | not recorded | `0x0100` |
+| USB speed | not recorded (CM108-class: full speed) | USB 1.1 full speed, 12 Mb/s |
+| Serial number | not recorded | none |
+| Audio interfaces (CoreAudio UID suffix) | `2,1` | `2,1` |
+| Input | mono, 16-bit LPCM, 48 kHz | mono, 16-bit LPCM, 44.1 / 48 kHz |
+| Output | stereo, 16-bit LPCM, 48 kHz | stereo, 16-bit LPCM, 44.1 / 48 kHz |
+| Mic gain range | not recorded | −12 to +23 dB |
+| Output volume range | not recorded | −37 to 0 dB |
+| Mac settings last saved | input max, output max, not muted (as used for the 2026-11-15 levels) | now: input −2 dB, output −10 dB, not muted |
+| Body size | 28 × 29 × 11.3 mm + 14 mm USB plug, jacks 12.4 mm apart, mic left | not measured |
+| Shell | black aluminium, labelled "USB Audio Adapter" | not recorded |
 | Used for | All on-air tests 2026-11-15: RX ~25 dB (35 dB with radio preamp), TX ALC 1–2 dots at full Mac output | Not tested on the radio yet |
 | Saved in | `WSJT-X.ini` and `JTDX-VU - RGO one.ini` (Sound In/Out = `USB Audio Device`) | No app config yet |
+
+Dongle A is not plugged in, so its column comes from the repo docs and
+from what macOS cached the last time it was connected
+(`/Library/Preferences/Audio/com.apple.audio.DeviceSettings.plist`).
+"Not recorded" fields need dongle A plugged in to read.
+
 
 A CM108-class chip reports its name from its own EEPROM, so the
 different names mean different physical dongles. Dongle A was not
@@ -23,7 +41,8 @@ plugged into the Mac when dongle B was detected.
 
 - Pick `Cable Creation` as Sound In and Sound Out in WSJT-X / JTDX. The
   saved `USB Audio Device` setting will not find it.
-- Measure the levels again (RX dB with antenna on and off, TX ALC). Mic
+- Set Mac input and output to max, as with dongle A, then measure the
+  levels again (RX dB with antenna on and off, TX ALC). Mic
   gain and output level can differ between dongle makes, so the 2026-11-15
   figures may not carry over.
 - Check its size before fitting it in the box. The enclosure cradle is
