@@ -14,7 +14,8 @@ are all verified. **PTT is the radio's USB RTS line** (radio menu 33 ON,
 menu 02 LINE IN ON; WSJT-X PTT Method = CAT): the box turns `TX;`/`RX;` into
 RTS, because the RGO ONE's own CAT `TX;` only shows TX without
 transmitting. Wiring: [`docs/wiring.svg`](docs/wiring.svg); full plan in
-[`docs/BOX_PLAN.md`](docs/BOX_PLAN.md). Write-up with photos:
+[`docs/BOX_PLAN.md`](docs/BOX_PLAN.md); sound card details in
+[`docs/SOUND_CARD.md`](docs/SOUND_CARD.md). Write-up with photos:
 [vu2cpl.com/projects/rgo-spe-cat](https://vu2cpl.com/projects/rgo-spe-cat/).
 
 ![The finished box](docs/photos/front.jpg)
@@ -95,6 +96,7 @@ ota.sh                  Wi-Fi upload through the UniFi IoT → Mac rule
 install.py              toolchain bootstrap, macOS/Pi branch
 enclosure/              3D-printed box (OpenSCAD); docs/BOX_PLAN.md has the plan + audio wiring
 docs/writeups/          self-contained HTML write-ups for the RGO ONE and SPE groups
+docs/SOUND_CARD.md      the USB audio dongle as the Mac sees it ("Cable Creation", 0D8C:0014)
 docs/history/           original 2026-11-13 design note (superseded by HANDOVER.md)
 ```
 

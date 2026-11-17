@@ -1,7 +1,7 @@
 # RGO ONE SPE CAT Server — Project Handover
 *For continuation in a new Claude session*
 
-**Created:** 2026-11-14 · **Last updated:** 2026-11-16 · **Type:** ESP firmware (ESP32-S3 N16R8)
+**Created:** 2026-11-14 · **Last updated:** 2026-11-17 · **Type:** ESP firmware (ESP32-S3 N16R8)
 
 ---
 
@@ -306,6 +306,13 @@ radio → SPE path doesn't need Wi-Fi.
   radio's DTR/RTS PTT/key setting before probing.
 
 ## What changed
+
+- **2026-11-17** — Sound card detected on the Mac and documented in
+  `docs/SOUND_CARD.md`: C-Media `0D8C:0014`, CoreAudio name **"Cable
+  Creation"**, USB 1.1 full speed, no serial number, mono in / stereo out,
+  16-bit at 44.1 or 48 kHz (48 kHz in use). Device UID includes the USB
+  location, so it changes if the dongle moves port; WSJT-X selects by name
+  and is not affected. BOX_PLAN parts table and README now point to it.
 
 - **2026-11-16** — Merged the loose pre-repo folder `~/projects/RGO one cat `
   (trailing space) into the repo, then trashed it. The two group write-ups
