@@ -305,11 +305,26 @@ radio → SPE path doesn't need Wi-Fi.
 - **Homebrew `pio` fails** with "Python version must be 3.10+" (it runs on
   Python 3.9). `flash.sh`, `monitor.sh` and `install.py` prefer
   `~/.platformio/penv/bin/pio`, which works.
+- **Patched Hamlib with "working CAT PTT" doesn't fix CAT PTT here.**
+  Joerg DJ4WD's Windows Hamlib build (2026-10-09, backend 20261007.0) adds
+  native RGO ONE backends: model 43001 "RGO ONE V6" and 43002 "RGO ONE
+  V1-V5", manufacturer "LZ2JR". Its V1-V5 `set_ptt` (from the DLL's
+  strings) reads `MD`, refuses TX without a valid mode, then sends `TX0;`
+  / `RX;`, the same `TX0;` that gave display-only TX on our radio
+  (2026-11-15). `TX2` and the usbser.sys RTS workaround belong to the V6
+  backend only. Windows-only DLLs, no use on the Mac (the S3 emulates a
+  TS-480 anyway). Its screenshots show 57600 baud for V1-V5; ours answers
+  only at 19200. Keep RTS PTT.
 - Opening the radio's FTDI port from a Mac can briefly raise DTR/RTS. The
   firmware forces both low right after enumeration; on the Mac, check the
   radio's DTR/RTS PTT/key setting before probing.
 
 ## What changed
+
+- **2026-11-17** — Checked DJ4WD's patched Hamlib bundle for the RGO ONE
+  (claims working CAT PTT). Its V1-V5 PTT is plain `TX0;`/`RX;`, already
+  shown not to give RF on this radio, so no change: RTS PTT stays. Note
+  added under "Known gotchas".
 
 - **2026-11-17** — Second sound card detected and documented in
   `docs/SOUND_CARD.md`: C-Media `0D8C:0014` again, but it reports
