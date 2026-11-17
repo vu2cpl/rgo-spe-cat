@@ -321,6 +321,15 @@ radio → SPE path doesn't need Wi-Fi.
 
 ## What changed
 
+- **2026-11-17** — Docs corrected: the AMP panel jack is a **1/8" (3.5 mm)**
+  stereo jack, the same size as the IN/OUT audio jacks, and the amp cable
+  is a 1/8" TRS plug → DB15 male. The docs had said 2.5 mm (draft 5 plan,
+  below), which was never what was built. Wiring (tip/ring/sleeve) is
+  unchanged. With all jacks one size, go by the panel labels. Fixed in
+  `docs/BOX_PLAN.md`, `enclosure/README.md`, `rgo_box.scad` comments and
+  both `docs/writeups/` pages;
+  no geometry change (the 6.2 mm hole already fits the jack).
+
 - **2026-11-17** — Checked DJ4WD's patched Hamlib bundle for the RGO ONE
   (claims working CAT PTT). Its V1-V5 PTT is plain `TX0;`/`RX;`, already
   shown not to give RF on this radio, so no change: RTS PTT stays. Note

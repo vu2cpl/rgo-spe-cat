@@ -15,7 +15,7 @@
 //     │   │board │     [dongle]                   │
 //     │ ● └──────┘     [      ]                 ● │
 //     └───USB-C x2─────IN──OUT───AMP────────────┘
-//        RIG  PWR     1/8" jacks  2.5mm
+//        RIG  PWR     1/8" jacks  1/8"
 //
 // - S3 board: its two USB-C sockets poke into one slot, so the radio and
 //   charger cables plug straight into the board. Held without tape: rib
@@ -25,9 +25,9 @@
 //   cable (DB15 plug on ACC1, resistors in its hood, two 1/8" plugs) plugs in
 //   there. A zip tie through the cradle holds it. The USB extension socket
 //   sits behind it on a zip-tie anchor.
-// - AMP: a 2.5 mm stereo (TRS) panel jack — the amp needs only 3 wires. A
-//   different size from the 1/8" audio jacks, so the cables can't be mixed
-//   up. Amp cable: 2.5 mm TRS plug → DB15 male (amp).
+// - AMP: a 1/8" (3.5 mm) stereo (TRS) panel jack — the amp needs only 3
+//   wires. Same size as the audio jacks, so go by the labels. Amp cable:
+//   1/8" TRS plug → DB15 male (amp).
 // - PC cable runs straight back from the extension socket and leaves
 //   through a notch at the top of the BACK wall, so no U-turn is needed and
 //   longer socket housings fit. A lid tab closes the notch to cable size.
@@ -114,7 +114,7 @@ pad_h       = 4;     // cradle floor the dongle sits on (zip tie runs through it
 rail_t      = 2;     // cradle side rails
 cradle_clear = 0.4;
 
-/* [AMP jack — 2.5 mm TRS, panel mount] */
+/* [AMP jack — 1/8" (3.5 mm) TRS, panel mount] */
 amp_jack_x      = 80;    // centre, from the inner left wall
 amp_jack_hole_d = 6.2;   // jack thread measured ~5.8 mm
 amp_jack_body   = 11;    // CHECK width of the jack body behind the panel

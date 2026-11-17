@@ -49,7 +49,7 @@ and no GPIO hack on the CM108.
 | PWR | S3 COM USB-C (same slot) | USB charger (USB-A → USB-C cable) |
 | IN | CM108 mic jack, 1/8" | Radio audio cable, RX plug |
 | OUT | CM108 headphone jack, 1/8" | Radio audio cable, TX plug |
-| AMP | 2.5 mm stereo (TRS) jack, panel mount | SPE CAT: 2.5 mm TRS plug → DB15 male cable (see below) |
+| AMP | 1/8" (3.5 mm) stereo (TRS) jack, panel mount | SPE CAT: 1/8" TRS plug → DB15 male cable (see below) |
 | PC | **Back wall:** 6 × 14 mm cable notch behind the dongle, closed by a tab on the lid | PC (CM108 audio) |
 
 The status LED shows through a window in the lid. Put a ferrite clamp on
@@ -169,12 +169,12 @@ the dongle and the radio, and run WSJT-X.
   These wires now go to the panel AMP jack instead of loose wires (see
   the amp cable below).
 
-## Amp cable (2.5 mm jack on the box → DB15 on the amp)
+## Amp cable (1/8" jack on the box → DB15 on the amp)
 
-The amp needs only 3 wires, so the box has a **2.5 mm stereo (TRS) panel
-jack**. It is a different size from the 1/8" audio jacks, so the amp and
-audio cables can't be mixed up. The cable is a **2.5 mm TRS plug → DB15
-male** (the amp's socket takes a male plug). Pin 11 (KEN TTL select) is
+The amp needs only 3 wires, so the box has a **1/8" (3.5 mm) stereo (TRS)
+panel jack**. It is the **same size as the IN and OUT audio jacks**, so a
+plug fits any of the three: go by the panel labels. The cable is a **1/8"
+TRS plug → DB15 male** (the amp's socket takes a male plug). Pin 11 (KEN TTL select) is
 joined to pin 4 inside the DB15 hood, so it needs no wire of its own.
 
 | Box jack | Inside the box | Wire | Amp DB15 pin |
@@ -213,7 +213,9 @@ line: keep it isolated, or the amp could key unexpectedly.
 
 A jack shorts its contacts for a moment as a plug goes in. The 220 Ω keeps
 GPIO17 safe during that short (the ring line already has its 10 k). Plug
-and unplug the amp cable with the box powered off, to be safe.
+and unplug the amp cable with the box powered off, to be safe. Because
+all three jacks are the same size, check the AMP label first: the amp
+cable in IN or OUT would put the amp's 5 V TTL line on the sound card.
 
 ## Power: USB charger
 
@@ -247,9 +249,9 @@ lining later.
 
 ## Parts to source
 
-- **Panel connector:** 1 × 2.5 mm stereo (TRS) panel jack (amp side), and a
+- **Panel connector:** 1 × 1/8" (3.5 mm) stereo (TRS) panel jack (amp side), and a
   220 Ω resistor for GPIO17.
-- **Amp cable:** 2.5 mm stereo plug + DB15 male plug with hood, and about
+- **Amp cable:** 1/8" (3.5 mm) stereo plug + DB15 male plug with hood, and about
   1 m of 2-core screened cable.
 - **Radio audio cable:**
   - 1 × DB15 male plug with hood;

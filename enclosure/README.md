@@ -23,7 +23,7 @@ right:
 | PWR | S3 COM USB-C | ← USB charger (USB-A → USB-C cable) |
 | IN | CM108 mic jack (1/8") | ← radio RX audio |
 | OUT | CM108 headphone jack (1/8") | → radio TX audio |
-| AMP | 2.5 mm stereo (TRS) jack | → SPE amp (2.5 mm plug → DB15 male cable, 3 wires; pinout in `docs/BOX_PLAN.md`) |
+| AMP | 1/8" (3.5 mm) stereo (TRS) jack | → SPE amp (1/8" plug → DB15 male cable, 3 wires; pinout in `docs/BOX_PLAN.md`) |
 | PC (back wall) | 6 × 14 mm notch behind the dongle for its USB extension cable | → PC |
 
 The radio audio cable has a DB15 male plug on ACC1, with the resistors
@@ -43,8 +43,8 @@ box. See `docs/BOX_PLAN.md`.
   It lies in a cradle; two stop posts behind its body take the push when a
   plug goes in. A zip tie through the cradle floor holds it down. The USB
   extension socket sits behind it on a zip-tie anchor.
-- **AMP jack:** a 2.5 mm stereo panel jack, a different size from the 1/8"
-  audio jacks so the cables can't be swapped.
+- **AMP jack:** a 1/8" (3.5 mm) stereo panel jack, the same size as the
+  IN/OUT audio jacks. Plugs fit any of the three, so go by the labels.
 - **PC cable notch (back wall):** in line with the dongle, so the cable
   runs straight out of the extension socket with no U-turn. A tab on the lid
   closes it down to cable size, so the USB-A plug never has to go through a
