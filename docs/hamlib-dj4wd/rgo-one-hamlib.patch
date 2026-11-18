@@ -1,0 +1,4210 @@
+diff --git a/configure.ac b/configure.ac
+index 26614d46d..4102956e2 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -66,7 +66,7 @@ dnl added to AC_CONFIG_FILES near the end of this file.  See README.developer
+ dnl Beware of duplication should a backend directory include both rig and
+ dnl rotor definitions, e.g. "dummy".  Optional backends will not be listed
+ dnl here but will be added later, e.g. "winradio".
+-RIG_BACKEND_LIST="rigs/adat rigs/alinco rigs/aor rigs/barrett rigs/codan rigs/dorji rigs/drake rigs/dummy rigs/elad rigs/flexradio rigs/icom rigs/icmarine rigs/jrc rigs/kachina rigs/kenwood rigs/kit rigs/lowe rigs/pcr rigs/prm80 rigs/racal rigs/rft rigs/rs rigs/simplecat rigs/skanti rigs/tapr rigs/tentec rigs/tuner rigs/uniden rigs/wj rigs/yaesu rigs/gomspace rigs/mds rigs/anytone rigs/motorola rigs/commradio rigs/guohetec rigs/harris"
++RIG_BACKEND_LIST="rigs/adat rigs/alinco rigs/aor rigs/barrett rigs/codan rigs/dorji rigs/drake rigs/dummy rigs/elad rigs/flexradio rigs/icom rigs/icmarine rigs/jrc rigs/kachina rigs/kenwood rigs/kit rigs/lowe rigs/pcr rigs/prm80 rigs/racal rigs/rft rigs/rs rigs/simplecat rigs/skanti rigs/tapr rigs/tentec rigs/tuner rigs/uniden rigs/wj rigs/yaesu rigs/gomspace rigs/mds rigs/anytone rigs/motorola rigs/commradio rigs/guohetec rigs/harris rigs/rgo"
+ RIG_BACKEND_OPTIONAL_LIST=""
+ ROT_BACKEND_LIST="rotators/amsat rotators/apex rotators/ars rotators/celestron rotators/cnctrk rotators/grbltrk rotators/easycomm rotators/ether6 rotators/flir rotators/fodtrack rotators/gs232a rotators/heathkit rotators/m2 rotators/meade rotators/rotorez rotators/sartek rotators/saebrtrack rotators/spid rotators/ts7400 rotators/prosistel rotators/ioptron rotators/satel rotators/skywatcher rotators/radant"
+ ROT_BACKEND_OPTIONAL_LIST=""
+@@ -958,6 +958,7 @@ rigs/gomspace/Makefile
+ rigs/mds/Makefile
+ rigs/anytone/Makefile
+ rigs/motorola/Makefile
++rigs/rgo/Makefile
+ tests/Makefile
+ scripts/Makefile
+ android/Makefile
+diff --git a/include/hamlib/rig.h b/include/hamlib/rig.h
+index bc1e8e73f..09b98c3bd 100644
+--- a/include/hamlib/rig.h
++++ b/include/hamlib/rig.h
+@@ -2056,6 +2056,11 @@ struct rig_caps {
+     int (*set_ptt)(RIG *rig, vfo_t vfo, ptt_t ptt);
+     int (*get_ptt)(RIG *rig, vfo_t vfo, ptt_t *ptt);
+ 
++    /** Optional callback invoked after ser_set_rts() for RIG_PTT_SERIAL_RTS.
++     *  Allows backends to apply host OS workarounds (e.g. Windows usbser.sys
++     *  no-op DTR write to force SET_CONTROL_LINE_STATE after an RTS-only change). */
++    int (*post_set_rts)(RIG *rig, hamlib_port_t *port, int state);
++
+     int (*get_dcd)(RIG *rig, vfo_t vfo, dcd_t *dcd);
+ 
+     int (*set_rptr_shift)(RIG *rig, vfo_t vfo, rptr_shift_t rptr_shift);
+@@ -2183,6 +2188,7 @@ struct rig_caps {
+ 
+     int (*set_channel)(RIG *rig, vfo_t vfo, const channel_t *chan);
+     int (*get_channel)(RIG *rig, vfo_t vfo, channel_t *chan, int read_only);
++    int (*delete_channel)(RIG *rig, vfo_t vfo, const channel_t *chan);
+ 
+     const char * (*get_info)(RIG *rig);
+ 
+diff --git a/include/hamlib/riglist.h b/include/hamlib/riglist.h
+index 7c6d683fe..372805326 100644
+--- a/include/hamlib/riglist.h
++++ b/include/hamlib/riglist.h
+@@ -1157,6 +1157,25 @@
+ #define RIG_MODEL_PRC138 RIG_MAKE_MODEL(RIG_HARRIS, 1)
+ ///@}
+ 
++/*
++ * RGO
++ */
++/** The `RGO` family. */
++#define RIG_RGO 43
++/** Used in register.c for the `be_name`. */
++#define RIG_BACKEND_RGO "rgo"
++
++/**
++ * \name RGO
++ * RGO models.
++ */
++///@{
++/// RGO ONE V6 (STM32 firmware, USB CDC ACM, extended CAT command set).
++#define RIG_MODEL_RGOONE_V6   RIG_MAKE_MODEL(RIG_RGO, 1)
++/// RGO ONE V1-V5 (Atmel AVR firmware, FTDI USB, reduced CAT command set).
++#define RIG_MODEL_RGOONE_V1V5 RIG_MAKE_MODEL(RIG_RGO, 2)
++///@}
++
+ /** Convenience type definition for rig model. */
+ typedef uint32_t rig_model_t;
+ 
+diff --git a/rigs/rgo/Makefile.am b/rigs/rgo/Makefile.am
+new file mode 100644
+index 000000000..0fe0b8c0b
+--- /dev/null
++++ b/rigs/rgo/Makefile.am
+@@ -0,0 +1,7 @@
++RGOSRC = rgo_one_v6.c rgo_one_v1v5.c
++
++noinst_LTLIBRARIES = libhamlib-rgo.la
++libhamlib_rgo_la_SOURCES = $(RGOSRC)
++libhamlib_rgo_la_CFLAGS = $(AM_CFLAGS) -I$(top_srcdir)/rigs/kenwood
++
++EXTRA_DIST = Android.mk
+diff --git a/rigs/rgo/README.de.md b/rigs/rgo/README.de.md
+new file mode 100644
+index 000000000..531eebbf8
+--- /dev/null
++++ b/rigs/rgo/README.de.md
+@@ -0,0 +1,714 @@
++# Hamlib Backend: RGO ONE
++
++**Hersteller:** LZ2JR
++
++| Modell | Model-ID | Status | Backend-Version |
++|---|---|---|---|
++| RGO ONE V6 | 43001 (`RIG_MODEL_RGOONE_V6`) | RIG_STATUS_BETA | 20261007.0 |
++| RGO ONE V1-V5 | 43002 (`RIG_MODEL_RGOONE_V1V5`) | RIG_STATUS_BETA | 20261007.0 |
++
++## Beschreibung
++
++### RGO ONE V6 (Modell 43001)
++
++All-Mode HF-Transceiver (1.8-29.7 MHz, 50W CW/SSB/FM/RTTY, 12.5W AM).
++STM32-Mikrocontroller, USB-CDC-ACM-Schnittstelle. Erweitertes TS-480SAT-kompatibles
++CAT-Protokoll mit eigenen Befehlen. Dieses Backend nutzt die vorhandenen Kenwood-Protokoll-
++Funktionen aus `rigs/kenwood/` und ergaenzt eigene Implementierungen fuer RGO-spezifische
++Abweichungen.
++
++CAT-Referenz: `RGO_ONE_V6_CAT_Manual1.03.pdf` (liegt in diesem Verzeichnis).
++
++### RGO ONE V1-V5 (Modell 43002)
++
++Aeltere Hardware-Versionen des RGO ONE. Atmel-AVR-Mikrocontroller, FTDI-USB-Chip.
++Reduziertes TS-480SAT-kompatibles CAT-Protokoll. Der bestaetigt funktionierende
++Befehlssatz (Firmware 2.51a, verifiziert von Don WB8YQJ) umfasst Frequenz, Betriebsart,
++VFO, RIT, AGC, Keyer-Geschwindigkeit, Tastensperre, Bandwechsel und PTT.
++
++**Hinweis:** Dieses Backend wurde vom Autor nicht gegen echte V1-V5-Hardware getestet.
++Es basiert auf der verifizierten Befehlsliste von Don WB8YQJ (Firmware 2.51a, Januar 2024).
++
++Wichtigste Unterschiede zum V6:
++- `ID;` gibt `ID020` zurueck (wie TS-480SAT, nicht `ID006`)
++- Nur `TX0;`/`RX;` fuer PTT -- `TX1` und `TX2` nicht verfuegbar
++- `RIG_PTT_ON_DATA` wird auf `TX0` gemappt (wie V6, fuer WSJT-X/fldigi-Kompatibilitaet)
++- Kein Antennen-Tuner (AC/TX2), keine Sendeleistungssteuerung (PC), kein Abschwaecher (RA), kein S-Meter (SM)
++- Kein RIT-Down (RD) -- nur positive RIT-Offsets koennen gesetzt werden
++- Kein Windows-RTS-Workaround noetig (FTDI-Chip leitet RTS korrekt weiter)
++
++## Teststatus (Stand 2026-05-17)
++
++Umfangreicher Hardware-Test mit dem automatisierten Test-Script abgeschlossen.
++82 von 82 Tests bestanden, inkl. PTT (TX0/TX2), Tuner-Abstimmung (TX2)
++und dem Raw-CAT-Abschnitt (AI, FS, PB).
++1 Test kann je nach Bandposition uebersprungen werden (AI1 BD-Restore:
++wenn bereits im untersten Band, wird kein Wechselereignis ausgeloest).
++
++Praxistest ueber viele Tage mit QLog 0.50.0 (Flatpak), WSJT-X und OpenWebRX
++via Hamlib NET rigctl -- Frequenz, Betriebsart, Bandwechsel, PTT und Split
++funktionieren reibungslos. Ausschliesslich unter Linux getestet.
++
++```
++Opened rig model 43001, 'RGO ONE V6'
++Backend version: 20260612.2, Status: Beta
++rgo_one_open: RGO ONE V6 identified: ID006
++```
++
++Die vollstaendige Firmware-Version und Seriennummern liefert `get_info` (`rigctl i`):
++
++```
++RGO ONE V6 ID006 FW1.08 SN:20303656 32435013 005D0069
++```
++
++| Funktion | Status |
++|---|---|
++| Verbindungsaufbau, Identifikation (ID) | Hardware getestet |
++| VFO-Abfrage (IF) | Hardware getestet |
++| Frequenz lesen/setzen (FA/FB) | Hardware getestet |
++| Betriebsart (MD) | Hardware getestet |
++| PTT (TX/RX) | Hardware getestet (optionaler `--ptt`-Test) |
++| Antennen-Tuner (AC) | Hardware getestet (optionaler `--tune`-Test) |
++| RIT/XIT (RU/RD/RT/XT) | Hardware getestet |
++| Pegel (RF, AGC, NB, NL, PA, RA, MG, ML, PC, VD, VG, SD, PL) | Hardware getestet |
++| Meter (S-Meter SM, SWR, ALC, COMP, RF-Power) | Hardware getestet |
++| CW-Keyer (KY, KS) | Hardware getestet |
++| Split (FR/FT) | Hardware getestet |
++| Band-Ops (BD/BU, inkl. Frequenzverifizierung) | Hardware getestet |
++| Tastensperre (LK) | Hardware getestet |
++| AI (Auto-Info), FS (Feinabstimmung), PB (Speicherkanal) | Hardware getestet via Raw-CAT |
++
++## Abgleich: Alle CAT-Befehle der RGO-Referenz (RGO ONE V6)
++
++Die folgenden Abschnitte beziehen sich ausschliesslich auf den **RGO ONE V6** (Modell 43001).
++Fuer den RGO ONE V1-V5 (Modell 43002) gilt der reduzierte Befehlssatz laut fw2.51a --
++siehe Beschreibung oben.
++
++### Implementiert und gegen CAT-Manual verifiziert
++
++| CAT-Befehl | RGO-Beschreibung | Hamlib-Funktion | Verifiziert |
++|---|---|---|---|
++| **AC** | Antennen-Tuner ein/aus (P1=1, P2=0=bypass, P2=1=aktiv) | `kenwood_set_func(TUNER)` | Ja |
++| **TX2** | Tune-Modus (Sender + Tuner-Abstimmung) | `rgo_one_vfo_op(RIG_OP_TUNE)` via `G TUNE` | Ja, sendet TX2; (nicht AC111) |
++| **BD** | Band runter | `kenwood_vfo_op(BAND_DOWN)` | Ja, mit Freq-Pruefung |
++| **BU** | Band hoch | `kenwood_vfo_op(BAND_UP)` | Ja, mit Freq-Pruefung |
++| **FA** | VFO A Frequenz (11 Stellen, Hz) | `kenwood_set_freq` / `kenwood_get_freq` | Ja |
++| **FB** | VFO B Frequenz (11 Stellen, Hz) | `kenwood_set_freq` / `kenwood_get_freq` | Ja |
++| **FR** | RX VFO (0=A, 1=B) | `kenwood_set_vfo` / `kenwood_get_vfo_if` | Ja |
++| **FT** | TX VFO (0=A, 1=B) | `kenwood_set_split_vfo` / `kenwood_get_split_vfo_if` | Ja |
++| **GT** | AGC (000=off, 001=fast, 002=slow) | `rgo_one_set_level` / `rgo_one_get_level` | Ja |
++| **FW** | Firmware-Version (z.B. FW0108 = v1.08) | `rgo_one_get_info` | Ja (FW 1.08+) |
++| **ID** | Radio-ID (006 = RGO ONE V6, kurzes Format seit FW 1.08) | `rgo_one_open` (Verifikation), `rgo_one_get_info` | Ja |
++| **MC** | Speicherkanal abrufen (Recall) 00-99 | `rgo_one_set_mem` / `rgo_one_get_mem` | Ja |
++| **MR** | Speicherkanal-Daten lesen (RX + TX-Slot) | `rgo_one_get_channel` | Ja |
++| **MW** | Speicherkanal-Daten schreiben | `rgo_one_set_channel` | Ja |
++| **SN** | µC-Seriennummern | `rgo_one_get_info` | Ja (FW 1.08+) |
++| **IF** | Voller Transceiver-Status (TS-480-Format) | `kenwood_get_if` (intern, fuer VFO/RIT/PTT/Split) | Ja |
++| **KS** | Keyer-Speed (005-045 WPM) | `kenwood_set_level` / `kenwood_get_level` | Ja, level_gran angepasst |
++| **KY** | CW-Text senden (24 Zeichen) | `kenwood_send_morse` / `rig_wait_morse` | Ja |
++| **LK** | Tastensperre (P1=0/1, P2=0 immer) | `rgo_one_set_func` / `rgo_one_get_func` | Ja, P2=0 fix |
++| **MD** | Betriebsart (1=LSB..7=CW-R) | `kenwood_set_mode` / `kenwood_get_mode` | Ja |
++| **MG** | Mikrofon-Gain (000-010) | `kenwood_set_level` / `kenwood_get_level` | Ja, micgain_max=10 |
++| **ML** | TX Monitor Level (000-010) | `rgo_one_set_level` / `rgo_one_get_level` | Ja, Skalierung /10 |
++| **NB** | Noise Blanker ein/aus | `kenwood_set_func` / `kenwood_get_func` | Ja |
++| **NL** | Noise Blanker Level (000-016) | `rgo_one_set_level` / `rgo_one_get_level` | Ja, Skalierung /16 |
++| **PA** | Preamp (P1=0/1, kein P2) | `rgo_one_set_level` / `rgo_one_get_level` | Ja, Set: `PA1`/`PA0` (Manual falsch, kein P2) |
++| **PC** | Sendeleistung (000-050 = 0-50W) | `rgo_one_set_level` / `rgo_one_get_level` | Ja, kenwood power_minmax inkompatibel |
++| **PL** | Speech Processor Level (P1=000-010 In, P2=000-010 Out) | `rgo_one_set_level(COMP)` / `rgo_one_get_level(COMP)` | Ja, Skalierung 0-10, P2=Output |
++| **RA** | Abschwaecher (P1=00/01, P2=00 immer) | `rgo_one_set_level` / `rgo_one_get_level` | Ja |
++| **RC** | RIT-Offset loeschen | `rgo_one_set_rit` | Ja |
++| **RD** | RIT-Offset runter (00000-00500, 10Hz-Schritte) | `rgo_one_set_rit` | Ja, Wert /10 |
++| **RG** | RF Gain (000-100) | `rgo_one_set_level` / `rgo_one_get_level` | Ja |
++| **RM** | Meter (0=Power, 1=ALC, 2=SWR, 3=COMP; Wert 0000-0015) | `rgo_one_set_level(METER)` / `rgo_one_read_meter` | Ja, RGO-Format |
++| **RT** | RIT ein/aus | `kenwood_set_func` / `kenwood_get_func` | Ja |
++| **RU** | RIT-Offset hoch (00000-00500, 10Hz-Schritte) | `rgo_one_set_rit` | Ja, Wert /10 |
++| **RX** | Empfangsmodus | `kenwood_set_ptt` (PTT off) | Ja |
++| **SD** | CW Break-in Delay (0000-1200 ms, direkt in ms) | `rgo_one_set_level(BKIN_DLYMS)` / `rgo_one_get_level(BKIN_DLYMS)` | Ja, kenwood cap 1000ms umgangen |
++| **SM** | S-Meter (P1=0, P2=0000-0015) | `rgo_one_get_level(STRENGTH)` | Ja, eigene Impl. (sendet `SM0`, nicht `SM`) |
++| **TX** | Sendemodus (TX0=Mic/Normal, TX2=TUNE; P1 Pflicht) | `rgo_one_set_ptt` | Ja, bare `TX;` abgewiesen (P1 immer erforderlich). `RIG_PTT_ON_DATA` wird auf TX0 gemappt (TX1 nicht dokumentiert). |
++| **VD** | VOX Delay (0000-1200, Einheit 100ms, val 0-12) | `kenwood_set_level` / `kenwood_get_level` | Ja, Hardware-Minimum ca. 500ms |
++| **VG** | VOX Gain (000-010, 000=VOX aus) | `rgo_one_set_level` / `rgo_one_get_level` | Ja, kenwood 0-9 umgangen, RGO 0-10 |
++| **XT** | XIT ein/aus | `kenwood_set_func` / `kenwood_get_func` | Ja |
++
++### IF-Frame-Format (TS-480-kompatibel, 37 Byte)
++
++Der `IF;`-Befehl liefert den vollstaendigen Transceiver-Status. Die Antwort wird in
++`priv->info` in kenwood.c gespeichert und intern von nahezu allen Poll-Funktionen genutzt.
++
++| Position | Feld | Hamlib-Nutzung |
++|---|---|---|
++| [0..1] | `"IF"`-Kennung | Antwort-Validierung (`kenwood_safe_transaction`) |
++| [2..12] | VFO-A-Frequenz, 11 Stellen (Hz) | `kenwood_get_freq`, `kenwood_get_vfo_if` |
++| [13..16] | Feldtrenner (4 Leerzeichen) | (Trennzeichen, wird nicht ausgewertet) |
++| [17..22] | RIT/XIT-Offset inkl. Vorzeichen (6 Zeichen) | `kenwood_get_rit`, `kenwood_get_xit` |
++| [23] | XIT ein/aus | `kenwood_get_func(XIT)` |
++| [24] | RIT ein/aus | `kenwood_get_func(RIT)` |
++| [25] | Empfangsmodus-Indikator | Nicht von Hamlib genutzt |
++| [26..27] | Speicherkanal (2 Stellen) | `kenwood_get_mem` |
++| [28] | TX-Zustand: 0=RX, 1=TX | `kenwood_get_ptt` |
++| [29] | Betriebsart: 1=LSB, 2=USB, 3=CW, 4=FM, 5=AM, 6=FSK, 7=CW-R | `kenwood_get_mode` |
++| [30] | VFO-Funktion | `kenwood_get_vfo_if`, `kenwood_get_split_vfo_if` |
++| [31] | Scan ein/aus | Nicht von Hamlib genutzt |
++| [32] | Split | `kenwood_get_split_vfo_if` |
++| [33] | Ton-Typ | Nicht von Hamlib genutzt |
++| [34..35] | Ton-Nummer (2 Stellen) | `kenwood_get_ctcss_tone` |
++| [36] | Abschlussleerzeichen | (Fuell-Byte) |
++
++Position [0]/[1] wird zur Validierung genutzt, zaehlt nicht als Datenfeld.
++Die Positionen [25], [31], [33] werden empfangen, aber von keiner Hamlib-Funktion ausgewertet.
++
++Die Hilfsfunktion `_parse_if_frame()` in `test_rgo_one.py` verwendet die Positionen
++[2..12] (Frequenz), [28] (TX-Zustand) und [29] (Betriebsart), um AI-Modus-IF-Frames
++im Rahmen von `test_raw_cat` zu validieren.
++
++### RGO-Befehle NICHT implementiert
++
++| CAT-Befehl | Beschreibung | Grund |
++|---|---|---|
++| **AI** | Auto-Info: sendet IF-Frame automatisch bei Aenderungen (Transceive-Modus) | Hamlib-Unterstuetzung fuer Transceive ist rudimentaer und wird von kaum einer Logging-Software genutzt. Polling genuegt fuer den praktischen Betrieb. Hamlib deaktiviert AI bei jeder Verbindung (`AI0;` in `kenwood_open`). **Via Raw-CAT getestet** in `test_raw_cat`: AI2 (periodische IF-Frames alle ~1,5 s) und AI1 (Aenderungs-Benachrichtigungs-Frames nach BU/BD) werden empfangen und ausgewertet. |
++| **FS** | Fine Tuning (1Hz-Schritt ein/aus) | Rein manuelle Bedienung; kein sinnvoller Anwendungsfall fuer CAT-Steuerung. **Via Raw-CAT getestet** in `test_raw_cat`: Lesen/Setzen/Pruefen/Zuruecksetzen-Zyklus mit `send_no_response`. |
++| **PB** | CW/SSB Memory Messages abspielen (4 Kanaele, PBP1P2) | Hamlib hat keine standardisierte API fuer Speicherkanal-Abruf. `send_morse` (KY) ist fuer Live-CW implementiert, aber Memory-Playback wird von keiner Logging-Software ueber Hamlib angesprochen. Direktaufruf per `rigctl w "PB11;"` ist ohne Backend-Aenderung moeglich. Koennte relevant werden, wenn Hamlib eine Memory-Message-API einfuehrt. **Nur-Lese-Test via Raw-CAT** in `test_raw_cat`. |
++
++### Bewusst NICHT implementiert
++
++| CAT-Befehl | Beschreibung | Grund |
++|---|---|---|
++| **EX** | Extended Menu (000-083): 84 Konfigurationsparameter (Sidetone, Keyer-Modus, Display, Scan, ...) | Das Menü als Ganzes ist nicht sinnvoll abbildbar -- jeder Eintrag muesste einzeln als Hamlib-Config-Token implementiert werden, Logging-Software greift darauf ohnehin nicht zu. Bei konkretem Bedarf koennen einzelne EX-Eintraege als dedizierte Level- oder Config-Parameter nachgereicht werden (z.B. CW-Pitch via EX). |
++| **UN** | Transceiver Unlock (Service-Befehl) | Nur fuer Werks-Service relevant, kein Nutzen fuer den normalen Betrieb. |
++
++### Kenwood-Befehle im Code, NICHT in RGO-Referenz
++
++Diese Befehle werden von delegierten Kenwood-Funktionen verwendet und sind im
++RGO-CAT-Manual nicht dokumentiert. Sie koennten via TS-480-Kompatibilitaet
++funktionieren oder auch nicht.
++
++| CAT-Befehl | Verwendet fuer | Risiko |
++|---|---|---|
++| **AG0** | AF Gain (Lautstaerke) | Mittel - grundlegende Funktion, wahrscheinlich TS-480-kompatibel |
++| **SQ0** | Squelch | Mittel - wahrscheinlich TS-480-kompatibel |
++| **SR** | Reset (VFO/Master) | Mittel - `kenwood_reset` delegiert |
++
++### Bewusst entfernte Befehle (gegenueber TS-480)
++
++| Funktion | Grund |
++|---|---|
++| **BY** (DCD/Busy) | Nicht im RGO-Manual. `dcd_type = RIG_DCD_NONE` gesetzt. |
++| **PR** (Speech Proc. ein/aus) | Nicht im RGO-Manual. Statt FUNC_COMP `PL` Level verwenden. |
++| **VX** (VOX ein/aus) | Nicht im RGO-Manual. VOX wird ueber `VG000` (gain=0) deaktiviert. |
++| **NR** (Noise Reduction) | Kein direkter CAT-Befehl. NR ist optional verbaubar; Steuerung (ein/aus + dB-Abschwächung) ueber EX-Menuepunkt 44. Koennte als `LVL_NR` / `FUNC_NR` via EX implementiert werden, sobald EX-Einzel-Eintraege nachgereicht werden. |
++| **PT** (CW Pitch direkt) | Nicht im RGO-Manual. Waere ueber EX-Menu moeglich. |
++| **UP/DN** (Freq hoch/runter) | Nicht im RGO-Manual. Aus VFO_OPS entfernt. |
++| **VV** (VFO Copy) | Nicht im RGO-Manual. Aus VFO_OPS entfernt. |
++| **CWPITCH** Level | Nicht als direkter Befehl. Muesste ueber EX-Menu implementiert werden. |
++
++## Zusammenfassung
++
++| Kategorie | Anzahl |
++|---|---|
++| CAT-Befehle laut RGO-Referenz FW 1.08 (ohne UN) | 40 |
++| Davon implementiert und verifiziert | 39 |
++| Davon nicht implementiert | 3 (AI, FS, PB) |
++| Bewusst nicht implementiert | 2 (EX, UN) |
++| Zusaetzliche Kenwood-Befehle (undokumentiert) | 3 (AG0, SQ0, SR) |
++
++## Bekannte Einschraenkungen
++
++| Bereich | Einschraenkung |
++|---|---|
++| **PA (Preamp)** | CAT-Manual v1.01 dokumentiert `Set: PAP1P2;` (z.B. `PA10;` = ein). Das stimmt nicht -- Firmware ignoriert P2 lautlos. Korrekt ist `PA1;` / `PA0;` (TS-480-Format ohne P2). ANSWER bleibt `PAP1P2;`. |
++| **NL (Noise Blanker Level)** | `NL000` wird von der Firmware (FW 1.10) ignoriert: der Pegel bleibt auf dem vorherigen Wert (gemessen: `NL000` bei Pegel 005, Rueckgabe weiter `NL005`). `NL001` (1/16 ≈ 6 %) ist der kleinste wirksame Wert; das Test-Script prueft ihn als Untergrenze. Das CAT-Manual 1.04 nennt 000 bis 016. |
++| **VD (VOX Delay)** | Unter FW 1.10 werden auch Werte unter 500 ms angenommen und zurueckgelesen (gemessen: `VD0000`, `VD0100`). Ob die Hardware sie umsetzt, ist per CAT nicht pruefbar. Das Test-Script prueft 500 ms (`val.i=5`, `VD0500`) und 1200 ms. |
++| **SD (Break-in Delay)** | Aeltere Firmware-Versionen koennen den Maximalwert auf unter 1200ms begrenzen. |
++| **SM (S-Meter)** | Kenwood-Funktion fuer unbekannte Modelle sendet nur `SM;` statt `SM0;`. Deshalb eigene Implementierung notwendig. |
++| **Passband / Filterbreite (FLT-Taste "NAR")** | Das Geraet meldet per CAT keine Filterbreite (`MD;` liefert nur den Mode). Die von `rigctl m` angezeigte Breite ist ein von Hamlib angenommener Normalwert (CW 200 Hz, SSB 2700 Hz) bzw. der zuletzt gesetzte Wert aus dem Hamlib-Cache -- kein Hardwarewert. Die FLT-Taste (Anzeige "NAR", variabler Filter) ist per CAT weder setz- noch lesbar. |
++| **TX (PTT)** | `TX;` ohne P1 wird vom Geraet abgewiesen. P1 ist Pflicht. Dokumentiert sind nur TX0 (Mic/Normal) und TX2 (Tune). `RIG_PTT_ON_DATA` wird auf TX0 gemappt -- TX1 ist im CAT-Manual nicht dokumentiert. Das Mapping auf TX0 bietet maximale Kompatibilitaet mit Logging- und Digitalmodus-Software (WSJT-X, fldigi). |
++| **RIT/XIT** | RU/RD P1 ist in 10Hz-Schritten (Werte 00000-00500 = 0-5000Hz). Hamlib RIT-Wert in Hz wird durch 10 geteilt. |
++| **Menüpunkt 33 (RTS als PTT)** | Wenn Menüpunkt 33 auf RTS=ON steht, geht das Gerät beim Verbindungsaufbau sofort auf Senden: Linux setzt RTS beim Öffnen des seriellen Ports automatisch auf HIGH, und der RGO ONE interpretiert das als PTT. **Menüpunkt 33 muss auf OFF stehen**, wenn CAT (rigctld) verwendet wird. |
++| **MW — Speicherkanal löschen (delete_channel)** | `MW P1=0, FREQ=0` funktioniert ab **FW 1.10** (an Hardware verifiziert, 2026-10-07); FW 1.09 verwarf den Befehl mit `?`. Das Backend liest jeden geschriebenen oder gelöschten Slot per `MR` zurück. Im Memory-Modus ignoriert die Firmware `MW` ohne Antwort; das Backend meldet dann `-RIG_ERJCTED` (TRX vorher per M/V-Taste in den VFO-Modus schalten). Hamlib 4.7.1 ruft `delete_channel` selbst nirgends auf, die Funktion ist nur über die Backend-Capabilities erreichbar. |
++| **PTT via RTS unter Windows** | Der Windows-CDC-ACM-Treiber `usbser.sys` sendet den USB-Steuerbefehl `SET_CONTROL_LINE_STATE` nur dann an das Gerät, wenn sich DTR ändert -- reine RTS-Änderungen werden vom Treiber stillschweigend ignoriert. Die Firmware empfängt die RTS-Zustandsänderung damit nie. Dieser seit 2008 bekannte Treiberfehler wurde von Microsoft nie behoben. **Workaround (im Backend implementiert):** Nach jeder RTS-Änderung wird DTR einmalig unverändert zurückgeschrieben (`post_set_rts`-Callback). Das erzwingt den `SET_CONTROL_LINE_STATE`-Request, der dann den aktuellen RTS-Zustand mitliefert. Der Workaround ist ausschliesslich unter Windows compiliert (`#if defined(WIN32)`); unter Linux und macOS ist er nicht aktiv, da deren CDC-ACM-Treiber RTS korrekt weiterleiten. Betrifft nur PTT via RTS (`--ptt-type RTS`); CAT-PTT (`TX0`/`RX`) ist auf allen Plattformen uneingeschraenkt nutzbar. |
++
++## Test-Script
++
++Das automatisierte Test-Script `test-dev/test_rgo_one.py` startet rigctld
++automatisch (falls nicht bereits laufend), testet alle CAT-Befehle mit
++Set-und-Verify-Semantik und gibt eine Zusammenfassung aus.
++
++```bash
++cd rigs/rgo/test-dev
++
++# Standard-Test (kein PTT, kein Tuner)
++python3 test_rgo_one.py -r /dev/ttyACM0 -s 9600
++
++# Mit kuerzerem Delay (schneller, aber etwas weniger stabil)
++python3 test_rgo_one.py -r /dev/ttyACM0 -s 9600 --delay 0.3
++
++# Laufenden rigctld verwenden
++python3 test_rgo_one.py --port 4532
++
++# PTT-Test einschliessen (sendet! Antenne anschliessen oder Dummy Load)
++python3 test_rgo_one.py -r /dev/ttyACM0 -s 9600 --ptt
++
++# Tuner-Abstimmung einschliessen (sendet! TX2 = voller Tune-Zyklus)
++python3 test_rgo_one.py -r /dev/ttyACM0 -s 9600 --tune
++
++# rigctld nach Test nicht stoppen
++python3 test_rgo_one.py -r /dev/ttyACM0 -s 9600 --no-stop
++```
++
++Optionen:
++
++| Option | Bedeutung | Standard |
++|---|---|---|
++| `-r DEVICE` | Serielles Geraet | `/dev/ttyACM0` |
++| `-s BAUD` | Baudrate | `9600` |
++| `--port PORT` | rigctld-Port (laufende Instanz verwenden) | `4532` |
++| `--delay SEC` | Pause zwischen Set und Get | `0.5` |
++| `--ptt` | PTT-Test einschliessen (sendet!) | aus |
++| `--tune` | Tuner-Abstimmung einschliessen (sendet!) | aus |
++| `--no-stop` | rigctld nach Test laufen lassen | aus |
++
++Erwartetes Ergebnis (mit `--ptt` und `--tune`):
++
++```
++--- Raw CAT commands (not in Hamlib API): AI, FS, PB ---
++  [OK]   AI: off (disabled by Hamlib on connect)  (AI0;)
++         (waiting ~1.5 s for AI2 periodic IF frame ...)
++  [OK]   AI2: periodic IF frame received and parsed  (freq=7.0260 MHz  mode=CW  tx=0)
++  [OK]   AI2: restored AI0  (AI0;)
++  [OK]   AI1: change-notification mode set  (AI1;)
++  [OK]   AI1: IF frame received after BU (band up)  (freq=10.1150 MHz  mode=CW)
++  [OK]   AI1: IF frame received after BD (band restored)  (freq=7.0260 MHz)
++  [OK]   AI: final verify AI0 (auto-info disabled)  (AI0;)
++  [OK]   FS: query fine tuning  (FS1;)
++  [OK]   FS: set off (FS0)  (FS0;)
++  [OK]   FS: restore (FS1)  (FS1;)
++  [OK]   PB: query memory playback  (ch=0 buf=00 (stop))
++========================================
++RESULT: 92/93 passed
++  OK:      92
++  FAILED:  0
++  SKIPPED: 1
++========================================
++```
++
++Ohne `--ptt` und `--tune` werden PTT und Tuner-Abstimmung uebersprungen
++(ca. 85/93 passed, ca. 8 skipped).
++Der eine permanente SKIP (`get_channel via Hamlib API`) ist eine Upstream-Einschraenkung:
++das netrigctl-Backend leitet Channel-Ops nicht uebers Netzwerk weiter; direkt
++(`rigctl -m 43001 h 0 1`) funktioniert es.
++Der AI1-BD-Restore-Test kann ebenfalls uebersprungen werden, wenn das Geraet
++bereits im untersten Band ist (BD loest dann kein Wechselereignis aus).
++
++## Aenderungsprotokoll
++
++### Version 20261007.0 (aktuell)
++
++- **Sicherheitsnetze gehaertet:** Die Guards (Mode-Readback in `set_mode`,
++  Pre-TX-Check in `set_ptt`, `send_morse`, V6 auch `send_voice_mem`) lesen den
++  aktiven Mode jetzt direkt per `MD;` (`rgo_one_read_live_mode`) statt ueber
++  `kenwood_get_mode`, das bei `RIG_VFO_B` ohne Ergebnis zurueckkehrt. Nicht
++  gelesene Modes bleiben `RIG_MODE_NONE` und werden abgelehnt.
++- README: Hinweis zu Passband/FLT-Taste, `delete_channel` auf FW 1.10
++  aktualisiert.
++- Fehlender Changelog-Abschnitt 20260822.0 nachgetragen.
++- Zeilen NL und VD in den bekannten Einschraenkungen an FW 1.10 angepasst
++  (NL000 wird ignoriert; VD unter 500 ms wird angenommen).
++- **`.version`** auf `20261007.0` (beide Modelle).
++
++### Version 20260924.0
++
++- **MW-Schreibverifikation** (nur V6): FW 1.10 fuehrt `MW` im Memory-Modus
++  nicht aus und meldet das nicht (CAT-Manual 1.04). `set_channel` und
++  `delete_channel` lesen den Kanal jetzt per `MR` zurueck und melden
++  `-RIG_ERJCTED`, wenn der Schreib-/Loeschbefehl nicht ausgefuehrt wurde.
++  Abhilfe: TRX mit der M/V-Taste in den VFO-Modus schalten.
++- **`.version`** auf `20260924.0` (beide Modelle).
++
++### Version 20260921.1
++
++- **RX-Frequenzgrenzen V6 korrigiert**: `rx_range_list1`/`rx_range_list2` von
++  1800-29700 kHz auf 1500-30000 kHz angepasst, gemaess FW-1.10-Release-Notes
++  ("RGO ONE V6 absolute frequency limits are now corrected and are:
++  1.5MHz < f <= 30MHz"). Nur V6 -- Release-Notes sind V6-spezifisch, V1-V5
++  unveraendert. TX-Bandsegmente (Amateurfunk-Bandplan) unveraendert, davon
++  unabhaengig.
++- **`.version`** auf `20260921.1` (beide Modelle, zur Konsistenz auch V1-V5
++  obwohl nur V6-Code geaendert wurde).
++
++### Version 20260921.0
++
++- **Sicherheitsnetze gegen TX im falschen Modus** (Anlass: ein Hardware-Vorfall,
++  bei dem CW ausgeloest wurde, waehrend der TRX noch in SSB stand, hat einen
++  Treibertransistor zerstoert):
++  - `rgo_one_set_mode`/`rgo_one_v1v5_set_mode`: `MD` ist ein Fire-and-Forget-Befehl
++    ohne Bestaetigung in der Antwort. Nach jedem Moduswechsel wird jetzt per
++    Readback verifiziert, dass er wirklich angekommen ist -- bei Abweichung
++    `-RIG_EPROTO` statt stillem `RIG_OK`.
++  - `rgo_one_set_ptt`/`rgo_one_v1v5_set_ptt`: Vor jedem `TX0`-Befehl wird der
++    aktuelle Modus live gelesen; schlaegt das fehl oder liefert `RIG_MODE_NONE`,
++    wird TX verweigert.
++  - `rgo_one_send_morse`/`rgo_one_v1v5_send_morse` (neu): `kenwood_send_morse()`
++    sendet das `KY`-Kommando direkt, komplett unter Umgehung von `set_ptt`. Der
++    generische Hamlib-Kern (`rig_send_morse()`) hat zwar schon einen CW/CWR-Check,
++    nutzt dafuer aber `rig_get_mode()` mit bis zu 500ms alten Cache-Werten. Jetzt
++    zusaetzlich Live-Verifikation unmittelbar vor dem Keying.
++  - `rgo_one_send_voice_mem`/`rgo_one_stop_voice_mem` (neu, nur V6): Das
++    `PB`-Kommando (Wiedergabe gespeicherter CW/SSB-Nachrichten, Kanaele 1-4) war
++    bisher **gar nicht** an die Hamlib-API angebunden -- nur per rohem CAT
++    erreichbar, ganz ohne Schutz. Jetzt ueber `.send_voice_mem`/`.stop_voice_mem`
++    verfuegbar, Wiedergabe nur erlaubt, wenn der TRX live verifiziert in CW/CWR
++    ist (CAT kann nicht unterscheiden, welcher Kanal CW- und welcher
++    SSB-Inhalt enthaelt -- im Zweifel die sicherere Variante). `PB0` (Stopp)
++    ist immer ohne Einschraenkung erlaubt.
++  - Nicht in V1-V5 uebernommen: `PB` ist dort nicht in der bestaetigten
++    Befehlsliste (fw2.51a, Don WB8YQJ).
++- **`.version`** auf `20260921.0` (beide Modelle).
++
++### Version 20260822.0
++
++- **`delete_channel` implementiert** (`rgo_one_delete_channel`): sendet
++  `MW P1=0, FREQ=0` als expliziten Loesch-Befehl (Spezifikation von Boris fuer
++  FW 1.09). In FW 1.09 noch nicht implementiert (die Firmware verwirft den
++  Befehl mit `?`); funktioniert ab FW 1.10.
++- **`get_channel` FW 1.09-Anpassung:** Ein leerer Kanal liefert ab FW 1.09 keine
++  Antwort (Timeout statt Null-Antwort wie in FW 1.08); wird korrekt als
++  `-RIG_ENAVAIL` gemeldet.
++- **`delete_channel`-Callback** in `include/hamlib/rig.h` und `src/rig.c`
++  eingetragen.
++- Neue Zeile `MW -- delete_channel` in den bekannten Einschraenkungen.
++
++### Version 20260612.2
++
++- **`rgo_one_set_channel` Bug behoben**: Fuer Nicht-Split-Kanaele wurde der TX-Slot
++  (P1=1) mit Frequenz 0 beschrieben. Die RGO-ONE-Firmware loescht dabei den gesamten
++  Kanaleintraege (RX und TX) -- abweichendes Verhalten gegenueber dem Kenwood TS-480,
++  bei dem TX=0 "kein Split" bedeutet aber der Kanal erhalten bleibt. Behoben durch:
++  TX-Slot erhaelt fuer Nicht-Split dieselbe Frequenz/Betriebsart wie der RX-Slot.
++  `get_channel` erkennt TX==RX bereits korrekt als Split=OFF.
++- **test_rgo_one.py**: VFO-Modus-Wiederherstellung am Teststart (`FR0;`) -- verhindert
++  Folgefehler wenn das Geraet vom vorherigen Test im Speicherkanal-Modus steht.
++  `test_mem()` nutzt nun `FR0;` statt `FA;` zum Beenden des Speicherkanal-Modus
++  (FA wird im Speicherkanal-Modus ignoriert). `test_channel()` prueft MW-Write+MR-Readback
++  fuer Non-Split und Split; get_channel via netrigctl wird als SKIP dokumentiert
++  (Upstream-Einschraenkung, funktioniert direkt: `rigctl -m 43001 h 0 1`).
++  `EXPECTED_BACKEND_VERSION` auf `20260612.2` aktualisiert.
++
++### Version 20260612.1
++
++- **`MR;` / `MW;` implementiert** (`get_channel` / `set_channel`): Lesen und Schreiben
++  von Speicherkanal-Daten (Frequenz, Betriebsart, Schrittweite, NB/PRE/ATT/AGC/FIL).
++  Format aus CAT-Manual v1.03 verifiziert und gegen Hardware getestet.
++  Leere Kanaele liefern Frequenz 0 → `-RIG_ENAVAIL`.
++  Split-Memory: RX-Slot (P1=0) und TX-Slot (P1=1) werden separat geschrieben/gelesen;
++  Split wird erkannt wenn TX-Frequenz ≠ 0 und ≠ RX-Frequenz.
++- **`MC;`-Bug behoben**: `set_mem` sendete `MC05;` (2 Stellen) statt `MC005;`
++  (3 Stellen gemaess Manual P1+P2). Korrigiert auf `MC0%02d`.
++- **test_rgo_one.py**: neuer `test_channel()` -- prueft MR-Rohdatenformat, Non-Split
++  und Split Write+Readback via MW/MR, Cleanup. CAT-Referenz auf v1.03 aktualisiert.
++
++### Version 20260612.0
++
++Neue CAT-Befehle aus RGO ONE V6 FW 1.08:
++
++- **`ID;`-Format geaendert (FW 1.08+)**: `ID;` gibt nur noch die Modellnummer
++  zurueck (`ID006`), nicht mehr die kombinierte Antwort (`ID006 <fw> <sn1> <sn2>`).
++  `rgo_one_open()` erkennt beide Formate: neue FW → Verbose-Log; alte FW →
++  `RIG_DEBUG_WARN` mit Hinweis auf Firmware-Update. Verbindung laeuft in beiden
++  Faellen weiter, da die meisten CAT-Befehle auch mit alter FW funktionieren.
++- **`FW;` — Firmware-Version** (FW 1.08+): liefert `FW0108` (= v1.08).
++  Verwendet in `rgo_one_get_info()`. Wird auf alter Firmware stillschweigend
++  uebersprungen.
++- **`SN;` — µC-Seriennummern** (FW 1.08+): liefert
++  `SN 20303656 32435013 005D0069` (drei Hex-Werte, durch Leerzeichen getrennt).
++  Verwendet in `rgo_one_get_info()`. Wird auf alter Firmware stillschweigend
++  uebersprungen.
++- **`get_info`-Ausgabe aktualisiert**: gibt jetzt
++  `"RGO ONE V6 ID006 FW1.08 SN:20303656 32435013 005D0069"` zurueck (FW 1.08+),
++  oder `"RGO ONE V6 ID006"` auf alter Firmware.
++- **`MC;` — Speicherkanal abrufen** (FW 1.08+): `set_mem` / `get_mem` implementiert.
++  `set_mem(n)` sendet `MC<nn>;` um Speicherkanal 00-99 abzurufen.
++  `get_mem()` liest den aktuellen Kanal ueber `MC;` (`MC000`..`MC099`).
++  Hinweis: Das Abrufen eines leeren (nicht programmierten) Kanals wird von der
++  Firmware stillschweigend ignoriert. `chan_list` deklariert 100 Speicherkanaele (0-99).
++- **test_rgo_one.py**: `test_id()` auf das kurze FW-1.08+-Format angepasst; neue
++  Subtests fuer `FW;` (Versions-Parse) und `SN;` (Seriennummern); neuer `test_mem()`
++  fuer MC. `EXPECTED_BACKEND_VERSION` auf `20260612.0` aktualisiert.
++
++### Version 20260603.0
++
++- **`rgo_one.c` umbenannt in `rgo_one_v6.c`**: Dateiname spiegelt nun die Hardware-Version wider.
++- **V6 `model_name`**: von `"RGO ONE"` auf `"RGO ONE V6"` geaendert, damit beide Modelle
++  in Software-Rig-Listen klar unterscheidbar sind.
++- **Neues Backend `rgo_one_v1v5.c`** (Modell 43002, `RIG_MODEL_RGOONE_V1V5`, `"RGO ONE V1-V5"`):
++  deckt die aelteren Hardware-Versionen (Atmel AVR, FTDI USB) ab, basierend auf dem
++  bestaetigt funktionierenden Befehlssatz von Don WB8YQJ (Firmware 2.51a, Januar 2024).
++  - Bestaetigt: FA FB FR FT GT IF KS LK MD RC RT RU RX TX0 BD BU AG0
++  - PTT: nur `TX0;`/`RX;` -- TX1 nicht verfuegbar; `RIG_PTT_ON_DATA` auf `TX0` gemappt
++    (maximale Kompatibilitaet mit WSJT-X, fldigi und Logging-Software)
++  - Kein RTS-Workaround (FTDI-Chip leitet RTS unter Windows korrekt weiter)
++  - `set_rit`: nur positive Offsets (RD nicht bestaetigt); liefert `-RIG_ENAVAIL` fuer negative Werte
++  - ID-Erkennung: kein strikter ID-Check -- V1-V5-Sub-Versionen koennen unterschiedliche Werte liefern
++
++### Version 20260529.0
++
++- **PTT via RTS unter Windows (`post_set_rts`)**: Neuer optionaler Callback `post_set_rts`
++  in `rig_caps` (`include/hamlib/rig.h`). Wird von `rig_set_ptt()` (`src/rig.c`) nach
++  jedem `ser_set_rts()`-Aufruf im `RIG_PTT_SERIAL_RTS`-Zweig aufgerufen, sofern belegt.
++  Das RGO-ONE-Backend implementiert diesen Callback als `rgo_one_post_set_rts()` unter
++  `#if defined(WIN32)`: liest DTR-Zustand und schreibt ihn unveraendert zurueck, um
++  `usbser.sys` zur Sendung von `SET_CONTROL_LINE_STATE` mit dem neuen RTS-Bit zu zwingen.
++  Unter Linux und macOS wird weder die Funktion noch der Caps-Eintrag compiliert.
++
++### Version 20260507.0
++
++- **TX (PTT) RIG_PTT_ON_DATA**: `TX1;` durch `TX0;` ersetzt.
++  TX1 ist im CAT-Manual v1.02 nicht dokumentiert -- nur TX0 (Mic/Normal) und
++  TX2 (Tune) sind spezifiziert. `RIG_PTT_ON_DATA` wird nun auf TX0 gemappt,
++  um maximale Kompatibilitaet mit Logging- und Digitalmodus-Software (WSJT-X,
++  fldigi) zu gewaehrleisten.
++- **test_rgo_one.py**: PTT-Test um Data-PTT (T 3 -> TX0) erweitert.
++- **test_rgo_one.py `test_raw_cat`**: Neuer Testabschnitt fuer AI, FS und PB --
++  CAT-Befehle, die laut Manual dokumentiert sind, aber keine Hamlib-API-Entsprechung
++  haben.
++  - **AI**: Verifiziert `AI0` beim Verbindungsaufbau (Hamlib-Anforderung); aktiviert
++    `AI2` und empfaengt via `w`-Trick einen periodischen IF-Frame (rigctld liest den
++    spontanen `;`-terminierten Frame als "Antwort"); aktiviert `AI1` und empfaengt
++    einen Aenderungs-IF-Frame nach `BU`; stellt `AI0` wieder her und verifiziert.
++  - **FS**: Lesen-Setzen(Toggle)-Pruefen-Zuruecksetzen-Pruefen-Zyklus.
++  - **PB**: Nur-Lese-Abfrage; Kanal und Puffer-Status werden ausgegeben.
++- **test_rgo_one.py `send_no_response()`**: Neue `RigCtl`-Hilfsfunktion fuer
++  Set-Befehle ohne Geraete-Antwort (`FS0;`, `FS1;`, `AI0;`, `AI1;`). rigctlds `w`
++  (send_raw) wartet unbegrenzt auf eine `;`-terminierte Antwort; `send_no_response`
++  nutzt einen 2-s-Subprocess-Timeout und behandelt `TimeoutExpired` als Erfolg.
++- **test_rgo_one.py `_parse_if_frame()`**: Neue statische Methode in `TestSuite`,
++  die einen TS-480/RGO-ONE-IF-Frame aus roher rigctl-Ausgabe parst und dabei
++  abschliesende `\x00`-Null-Bytes beruecksichtigt. Gibt `(freq_hz, mode, tx_state)`
++  aus den Positionen [2..12], [29] und [28] zurueck.
++
++### Version 20260424.5
++
++- **TX (PTT)**: Eigene `rgo_one_set_ptt` statt `kenwood_set_ptt`.
++  `kenwood_set_ptt` sendet bare `TX;` fuer `RIG_PTT_ON`, aber das RGO verlangt
++  immer einen P1-Parameter. `TX;` ohne P1 wird vom Geraet abgewiesen.
++  Neu: `TX0;` (Mic/normal PTT), `TX1;` (Data-PTT), `RX;` (PTT off).
++- **G TUNE (Antennen-Abstimmung)**: Eigene `rgo_one_vfo_op` statt `kenwood_vfo_op`.
++  `kenwood_vfo_op(RIG_OP_TUNE)` haette `AC111;` gesendet, was fuer das RGO falsch ist.
++  Das RGO startet den Tune-Vorgang ueber `TX2;` (TX im Tune-Modus).
++  BD und BU werden weiterhin an `kenwood_vfo_op` delegiert.
++- **test_rgo_one.py**: NL-Minimaltest ersetzt den Skip: prueft NL001 (1/16 ≈ 6%)
++  statt 0%. Alle Ausgaben ins Englische uebersetzt.
++
++### Version 20260424.4
++
++- **PA (PREAMP) set_level**: SET-Format von `PA10` auf `PA1` geaendert (kein P2).
++  CAT-Manual v1.01 dokumentiert `PAP1P2;` (P2=0 immer), aber Firmware ignoriert P2
++  lautlos. Diagnose ergab: `PA1;` funktioniert, `PA10;` nicht.
++  Merkhilfe: SET-Format ist kuerzer als ANSWER-Format -- analog zu `RA`.
++- **test_rgo_one.py**: Alle Ausgaben ins Englische uebersetzt.
++
++### Version 20260424.3
++
++- **SM (STRENGTH)**: Eigene Implementierung statt `kenwood_get_level`.
++  `kenwood_get_level` sendet fuer unbekannte Modelle nur `SM;`; das RGO versteht
++  nur `SM0;`. Eigene Implementierung sendet `SM0` mit expected_len=7 und wendet
++  str_cal an.
++- **BD/BU Test**: Test prueft jetzt ob sich die Frequenz nach BAND_UP/-DOWN
++  tatsaechlich geaendert hat (vorher nur Rueckgabe-Code geprueft).
++- **NL 0% Test**: Uebersprungen (Hardware-Minimum > 0). In 20260424.5 durch NL001-Test ersetzt.
++
++### Version 20260424.2
++
++- **SD (BKIN_DLYMS) set_level**: `/ 10` wieder entfernt. SD-Parameter ist direkt
++  in ms (0000-1200), keine 10ms-Einheiten.
++- **RIT set_level**: `abs((int)rit)` korrigiert zu `abs((int)rit) / 10`.
++  RGO RU/RD P1 ist in 10Hz-Schritten. Vorher wurde bei 500Hz RIT das Kommando
++  `RU00500` (= 5000Hz) gesendet.
++- **test_rgo_one.py**: `--delay`-Option (Standard 0.5s), NaN-Erkennung,
++  "error ="-Erkennung, VD-Minimum auf 5 (500ms Hardware-Limit),
++  Version-Pruefung des rigctld-Binaries.
++
++### Version 20260424.1
++
++- **PC (RFPOWER)**: Eigene Implementierung statt kenwood.
++  `kenwood_get_power_minmax()` schickt `PC;PC000;PC;PC255;PC;PC000;` -- vom RGO
++  nicht unterstuetzt. Neu: direktes `PC;` mit Skalierung 0-50.
++- **VG (VOXGAIN)**: Eigene Implementierung statt kenwood.
++  Kenwood skaliert 0-9, RGO braucht 0-10.
++- **PL (COMP)**: Eigene Implementierung statt kenwood.
++  Kenwood skaliert 0-100 und sendet gleiche Werte fuer P1 und P2.
++  RGO braucht 0-10; P2 (Output-Level) wird fuer Get gelesen.
++- **SD (BKIN_DLYMS)**: Eigene Implementierung statt kenwood.
++  Kenwood begrenzt auf 1000ms; RGO unterstuetzt bis 1200ms.
++- **level_gran**: Korrekte Eintraege fuer RFPOWER (step=1/50), VOXGAIN
++  (step=1/10), COMP (step=1/10), VOXDELAY (max=12 = 1200ms).
++  Guards `NO_LVL_RFPOWER` und `NO_LVL_VOXGAIN` in `level_gran_kenwood.h` ergaenzt.
++- **test_rgo_one.py**: Python-Test-Script unter `test-dev/`. Startet rigctld
++  automatisch, testet alle CAT-Befehle (Set+Verify) und gibt eine Zusammenfassung.
++
++### Version 20260422.1
++
++- **mfg_name**: "ARGO" -> "LZ2JR"
++- **status**: `RIG_STATUS_ALPHA` -> `RIG_STATUS_BETA`
++- **MG** micgain_max: 100 -> 10 (RGO: 000-010)
++- **RM** Meter: Komplett neu geschrieben (RGO-Einzelabfrage statt
++  TS-480-Dreifachantwort, Nummerierung 0=Pwr/1=ALC/2=SWR/3=COMP)
++- **ML** Monitor: Skalierung *9/*9 -> *10/*10 (RGO: 000-010)
++- **NL** Noise Blanker: Skalierung *10/*10 -> *16/*16 (RGO: 000-016)
++- **LK** Lock: `LK11` -> `LK10` (P2=0 immer laut RGO-Manual)
++- **PA** Preamp: `PA1` -> `PA10` (P2=0 ergaenzt -- spaeter in 20260424.4 wieder
++  entfernt, weil Firmware P2 ignoriert)
++- **SM/STR_CAL**: Kalibrierungstabelle auf Bereich 0-15 angepasst (RGO: 0000-0015)
++- **SWR_CAL**: Kalibrierungstabelle auf Bereich 0-15 angepasst
++- **RFPOWER_METER**: Division durch 20 -> 15 (RGO SM max = 15)
++- **KS** level_gran: 4-60 -> 5-45 WPM (RGO: 005-045)
++- **SD** level_gran: 30-3000 -> 0-1200 ms (RGO: 0000-1200)
++- **DCD**: Entfernt (`RIG_DCD_NONE`, BY nicht dokumentiert)
++- **FUNC**: COMP und VOX entfernt (PR/VX nicht im RGO-Manual)
++- **CWPITCH**: Aus Level-Liste entfernt (kein direkter Befehl)
++- **VFO_OPS**: UP, DOWN, CPY entfernt (UP/DN/VV nicht dokumentiert)
++- **ID-Pruefung**: `rgo_one_open()` verifiziert "006" in ID-Antwort
++- **get_info**: Gibt Firmware/Seriennummer aus ID-Antwort zurueck
++
++### Version 20260422.0 (erste Version)
++
++- Initiale Implementierung auf Basis TS-480SAT-Protokoll
++
++## Kompilieren
++
++```bash
++# Voraussetzungen (Debian/Ubuntu)
++sudo apt install build-essential automake autoconf libtool pkg-config \
++    libusb-1.0-0-dev libreadline-dev
++
++# Im Hamlib-Quellverzeichnis
++autoreconf -fi
++./configure
++make -j$(nproc)
++
++# Pruefen ob beide RGO-ONE-Modelle erkannt werden
++./tests/rigctl -l | grep -i rgo
++# Erwartete Ausgabe:
++# 43001  LZ2JR   RGO ONE V6     20260612.2   Beta   RIG_MODEL_RGOONE_V6
++# 43002  LZ2JR   RGO ONE V1-V5  20260603.0   Beta   RIG_MODEL_RGOONE_V1V5
++```
++
++## Installation (systemweit)
++
++```bash
++cd hamlib-4.7.1
++./configure --prefix=/usr/local
++make -j$(nproc)
++sudo make install
++sudo ldconfig
++```
++
++Kontrolle danach:
++
++```bash
++/usr/local/bin/rigctl --version
++ls /usr/local/lib/libhamlib.so.5*
++```
++
++## Benutzung
++
++Der RGO ONE meldet sich am USB-Port als `/dev/ttyACM0` (CDC ACM, kein FTDI-Adapter
++noetig). Der genaue Geraetename kann je nach System abweichen -- Kontrolle mit:
++
++```bash
++ls /dev/ttyACM* /dev/ttyUSB*
++```
++
++### rigctl (interaktiv)
++
++```bash
++/usr/local/bin/rigctl -m 43001 -r /dev/ttyACM0 -s 9600
++
++# Haeufige Befehle:
++#   f          - Frequenz abfragen
++#   F 14250000 - Frequenz setzen (14.250 MHz)
++#   m          - Betriebsart abfragen
++#   M USB 2700 - USB mit 2.7 kHz Filter
++#   t          - PTT-Status abfragen
++#   T 1        - PTT ein
++#   T 0        - PTT aus
++#   G TUNE     - Antennen-Tuner starten (TX2, sendet!)
++```
++
++Fuer ausfuehrliche Debug-Ausgabe (Diagnose):
++
++```bash
++/usr/local/bin/rigctl -m 43001 -r /dev/ttyACM0 -s 9600 -vvvv f
++```
++
++### rigctld + QLog (Flatpak)
++
++QLog als Flatpak verwendet eine eigene, aeltere hamlib ohne RGO-ONE-Unterstuetzung.
++Die Loesung: `rigctld` als Daemon mit der neuen hamlib starten -- QLog verbindet sich
++dann per Netzwerk und benoetigt keine eigene hamlib fuer das Protokoll.
++
++**Getestet und bewaehrt** mit QLog 0.50.0 (Flatpak) am 2026-04-27.
++
++**Schritt 1:** rigctld starten.
++
++Im Hintergrund (normaler Betrieb):
++
++```bash
++/usr/local/bin/rigctld -m 43001 -r /dev/ttyACM0 -s 57600 -t 4532
++```
++
++Im Vordergrund mit Protokollausgabe (Diagnose):
++
++```bash
++/usr/local/bin/rigctld -m 43001 -r /dev/ttyACM0 -s 57600 -t 4532 -vvv
++```
++
++Log-Level: `-v` Warning, `-vv` Verbose, `-vvv` Debug, `-vvvv` Trace (sehr ausfuehrlich).
++
++**Schritt 2:** In QLog unter "Neues Geraet" konfigurieren:
++
++| Feld | Wert |
++|---|---|
++| Hersteller | Hamlib |
++| Modell | NET rigctl |
++| Adresse | 127.0.0.1 |
++| Port | 4532 |
++
++Damit bleibt QLog unveraendert und die aktuelle hamlib-Version wird trotzdem genutzt.
++Dasselbe Prinzip funktioniert auch fuer WSJT-X, fldigi und andere Flatpak-Anwendungen.
++
++**Hinweis Baudrate:** Fuer den USB-Port (CDC ACM) spielt die Host-seitige Baudrate keine
++Rolle -- USB-Protokoll uebernimmt die Kommunikation. Menu-Punkt 22 im RGO ONE gilt
++nur fuer den TTL-UART (DB15-Stecker). `-s 57600` ist ein sicherer Standard.
++
++## Serielle Schnittstelle
++
++- **USB:** Virtueller COM-Port (USB-Treiber installieren)
++- **TTL UART:** DB15-Stecker Rueckseite (Pin 4=GND, Pin 5=TX, Pin 6=RX)
++- **Baudraten:** 9600, 19200, 38400, 57600 (Menu 22 gilt nur fuer TTL-Port)
++- **Format:** 8N1, kein Handshake
++
++## Dateien
++
++| Datei | Beschreibung |
++|---|---|
++| `rgo_one_v6.c` | Backend-Implementierung -- RGO ONE V6 |
++| `rgo_one_v1v5.c` | Backend-Implementierung -- RGO ONE V1-V5 |
++| `Makefile.am` | Build-Konfiguration |
++| `RGO_ONE_V6_CAT_Manual1.03.pdf` | Offizielle CAT-Referenz v1.03 |
++| `test-dev/test_rgo_one.py` | Automatisiertes Test-Script (Set+Verify alle CAT-Befehle) |
++| `test-dev/run_rigctl.sh` | Hilfs-Script für rigctld starten/stoppen/Status |
++| `test-dev/sync_from_release.sh` | Abgleich/Update der Quelldateien mit aktuellem Release-ZIP |
++| `test-dev/create_release.sh` | Patch und Release-ZIPs neu erstellen |
++| `test-dev/build_and_install.sh` | Hamlib kompilieren und systemweit installieren (Linux) |
++| `README.de.md` | Diese Datei (Deutsch) |
++| `README.en.md` | Diese Datei (Englisch) |
++
++Geänderte Kern-Hamlib-Dateien (im Patch und Release-ZIP enthalten, für manuelle Integration unter Windows/MinGW und andere Plattformen):
++
++| Datei | Beschreibung |
++|---|---|
++| `configure.ac` | Build-System -- RGO-Backend eingetragen |
++| `src/register.c` | Backend-Registrierung |
++| `include/hamlib/rig.h` | post_set_rts-Callback (Windows PTT-Fix) |
++| `src/rig.c` | post_set_rts-Aufruf in rig_set_ptt() |
++| `include/hamlib/riglist.h` | Modell-IDs RGO ONE V6 (43001) und V1-V5 (43002) |
+diff --git a/rigs/rgo/README.en.md b/rigs/rgo/README.en.md
+new file mode 100644
+index 000000000..e8d3077d5
+--- /dev/null
++++ b/rigs/rgo/README.en.md
+@@ -0,0 +1,711 @@
++# Hamlib Backend: RGO ONE
++
++**Manufacturer:** LZ2JR
++
++| Model | Model ID | Status | Backend version |
++|---|---|---|---|
++| RGO ONE V6 | 43001 (`RIG_MODEL_RGOONE_V6`) | RIG_STATUS_BETA | 20261007.0 |
++| RGO ONE V1-V5 | 43002 (`RIG_MODEL_RGOONE_V1V5`) | RIG_STATUS_BETA | 20261007.0 |
++
++## Description
++
++### RGO ONE V6 (model 43001)
++
++All-mode HF transceiver (1.8-29.7 MHz, 50W CW/SSB/FM/RTTY, 12.5W AM).
++STM32 microcontroller, USB CDC ACM interface. Extended TS-480SAT-compatible CAT protocol
++with custom commands. This backend builds on the existing Kenwood protocol layer in
++`rigs/kenwood/` and adds custom implementations wherever the RGO ONE V6 deviates from
++TS-480 behaviour.
++
++CAT reference: `RGO_ONE_V6_CAT_Manual1.03.pdf` (located in this directory).
++
++### RGO ONE V1-V5 (model 43002)
++
++Earlier hardware versions of the RGO ONE. Atmel AVR microcontroller, FTDI USB chip.
++Reduced TS-480SAT-compatible CAT protocol. The confirmed working command set (firmware
++2.51a, verified by Don WB8YQJ) covers frequency, mode, VFO, RIT, AGC, keyer speed,
++key lock, band up/down and PTT. The V1-V5 backend is essentially a restricted TS-480
++profile with the confirmed RGO ONE deviations applied.
++
++**Note:** This backend has not been tested against real V1-V5 hardware by the author.
++It is based on the verified command list from Don WB8YQJ (firmware 2.51a, January 2024).
++
++Key differences from V6:
++- `ID;` returns `ID020` (same as TS-480SAT, not `ID006`)
++- Only `TX0;`/`RX;` for PTT — `TX1` and `TX2` not available
++- `RIG_PTT_ON_DATA` mapped to `TX0` (same logic as V6, for WSJT-X / fldigi compatibility)
++- No antenna tuner (AC/TX2), no RF power control (PC), no attenuator (RA), no S-meter (SM)
++- No RIT-down (RD) — only positive RIT offsets can be set; get_rit reads from IF frame
++- No Windows RTS workaround needed (FTDI chip handles RTS correctly)
++
++## Test status (as of 2026-05-17)
++
++Comprehensive hardware testing completed using the automated test script.
++82 of 82 tests passed, including PTT (TX0/TX2), antenna tuner cycle (TX2),
++and the raw CAT command section (AI, FS, PB).
++1 test may be skipped depending on band position (AI1 BD restore, if already
++at the lowest band no change event is triggered).
++
++Real-world operation tested over many days with QLog 0.50.0 (Flatpak),
++WSJT-X, and OpenWebRX via Hamlib NET rigctl — frequency, mode, band changes,
++PTT and split work without issues. Tested exclusively under Linux.
++
++```
++Opened rig model 43001, 'RGO ONE V6'
++Backend version: 20260612.2, Status: Beta
++rgo_one_open: RGO ONE V6 identified: ID006
++```
++
++The full firmware version and serial numbers are returned by `get_info` (`rigctl i`):
++
++```
++RGO ONE V6 ID006 FW1.08 SN:20303656 32435013 005D0069
++```
++
++| Function | Status |
++|---|---|
++| Connection, identification (ID) | Hardware tested |
++| VFO readback (IF) | Hardware tested |
++| Frequency read/set (FA/FB) | Hardware tested |
++| Operating mode (MD) | Hardware tested |
++| PTT (TX/RX) | Hardware tested (optional `--ptt` test) |
++| Antenna tuner (AC) | Hardware tested (optional `--tune` test) |
++| RIT/XIT (RU/RD/RT/XT) | Hardware tested |
++| Levels (RF, AGC, NB, NL, PA, RA, MG, ML, PC, VD, VG, SD, PL) | Hardware tested |
++| Meters (S-meter SM, SWR, ALC, COMP, RF power) | Hardware tested |
++| CW keyer (KY, KS) | Hardware tested |
++| Split VFO (FR/FT) | Hardware tested |
++| Band ops (BD/BU, incl. frequency verification) | Hardware tested |
++| Key lock (LK) | Hardware tested |
++| AI (auto-info), FS (fine tuning), PB (memory playback) | Hardware tested via raw CAT |
++
++## CAT command coverage (RGO ONE V6)
++
++The following sections cover the **RGO ONE V6** (model 43001) in detail.
++For the RGO ONE V1-V5 (model 43002), see the description above — it uses a subset
++of the TS-480 command set as confirmed on firmware 2.51a.
++
++### Implemented and verified against CAT manual
++
++| CAT command | RGO description | Hamlib function | Verified |
++|---|---|---|---|
++| **AC** | Antenna tuner on/off (P1=1, P2=0=bypass, P2=1=active) | `kenwood_set_func(TUNER)` | Yes |
++| **TX2** | Tune mode (transmit + tuner cycle) | `rgo_one_vfo_op(RIG_OP_TUNE)` via `G TUNE` | Yes, sends TX2; (not AC111) |
++| **BD** | Band down | `kenwood_vfo_op(BAND_DOWN)` | Yes, with frequency verification |
++| **BU** | Band up | `kenwood_vfo_op(BAND_UP)` | Yes, with frequency verification |
++| **FA** | VFO A frequency (11 digits, Hz) | `kenwood_set_freq` / `kenwood_get_freq` | Yes |
++| **FB** | VFO B frequency (11 digits, Hz) | `kenwood_set_freq` / `kenwood_get_freq` | Yes |
++| **FR** | RX VFO (0=A, 1=B) | `kenwood_set_vfo` / `kenwood_get_vfo_if` | Yes |
++| **FT** | TX VFO (0=A, 1=B) | `kenwood_set_split_vfo` / `kenwood_get_split_vfo_if` | Yes |
++| **GT** | AGC (000=off, 001=fast, 002=slow) | `rgo_one_set_level` / `rgo_one_get_level` | Yes |
++| **FW** | Firmware version (e.g. FW0108 = v1.08) | `rgo_one_get_info` | Yes (FW 1.08+) |
++| **ID** | Radio ID (006 = RGO ONE V6, short format since FW 1.08) | `rgo_one_open` (verification), `rgo_one_get_info` | Yes |
++| **MC** | Memory recall channel 00-99 | `rgo_one_set_mem` / `rgo_one_get_mem` | Yes |
++| **MR** | Memory read — reads stored channel data (RX + TX slot) | `rgo_one_get_channel` | Yes |
++| **MW** | Memory write — writes channel data | `rgo_one_set_channel` | Yes |
++| **SN** | µC serial numbers | `rgo_one_get_info` | Yes (FW 1.08+) |
++| **IF** | Full transceiver status (TS-480 format) | `kenwood_get_if` (internal, for VFO/RIT/PTT/split) | Yes |
++| **KS** | Keyer speed (005-045 WPM) | `kenwood_set_level` / `kenwood_get_level` | Yes, level_gran adjusted |
++| **KY** | Send CW text (24 characters) | `kenwood_send_morse` / `rig_wait_morse` | Yes |
++| **LK** | Key lock (P1=0/1, P2=0 always) | `rgo_one_set_func` / `rgo_one_get_func` | Yes, P2=0 fix |
++| **MD** | Operating mode (1=LSB..7=CW-R) | `kenwood_set_mode` / `kenwood_get_mode` | Yes |
++| **MG** | Microphone gain (000-010) | `kenwood_set_level` / `kenwood_get_level` | Yes, micgain_max=10 |
++| **ML** | TX monitor level (000-010) | `rgo_one_set_level` / `rgo_one_get_level` | Yes, scaling /10 |
++| **NB** | Noise blanker on/off | `kenwood_set_func` / `kenwood_get_func` | Yes |
++| **NL** | Noise blanker level (000-016) | `rgo_one_set_level` / `rgo_one_get_level` | Yes, scaling /16 |
++| **PA** | Preamp (P1=0/1, no P2) | `rgo_one_set_level` / `rgo_one_get_level` | Yes, set: `PA1`/`PA0` (manual wrong, no P2) |
++| **PC** | TX power (000-050 = 0-50W) | `rgo_one_set_level` / `rgo_one_get_level` | Yes, kenwood power_minmax incompatible |
++| **PL** | Speech processor level (P1=000-010 in, P2=000-010 out) | `rgo_one_set_level(COMP)` / `rgo_one_get_level(COMP)` | Yes, scaling 0-10, P2=output |
++| **RA** | Attenuator (P1=00/01, P2=00 always) | `rgo_one_set_level` / `rgo_one_get_level` | Yes |
++| **RC** | Clear RIT offset | `rgo_one_set_rit` | Yes |
++| **RD** | RIT offset down (00000-00500, 10Hz steps) | `rgo_one_set_rit` | Yes, value /10 |
++| **RG** | RF gain (000-100) | `rgo_one_set_level` / `rgo_one_get_level` | Yes |
++| **RM** | Meter (0=power, 1=ALC, 2=SWR, 3=COMP; value 0000-0015) | `rgo_one_set_level(METER)` / `rgo_one_read_meter` | Yes, RGO format |
++| **RT** | RIT on/off | `kenwood_set_func` / `kenwood_get_func` | Yes |
++| **RU** | RIT offset up (00000-00500, 10Hz steps) | `rgo_one_set_rit` | Yes, value /10 |
++| **RX** | Receive mode | `kenwood_set_ptt` (PTT off) | Yes |
++| **SD** | CW break-in delay (0000-1200 ms, direct ms) | `rgo_one_set_level(BKIN_DLYMS)` / `rgo_one_get_level(BKIN_DLYMS)` | Yes, kenwood 1000ms cap bypassed |
++| **SM** | S-meter (P1=0, P2=0000-0015) | `rgo_one_get_level(STRENGTH)` | Yes, custom impl. (sends `SM0`, not `SM`) |
++| **TX** | Transmit mode (TX0=mic/normal, TX2=tune; P1 mandatory) | `rgo_one_set_ptt` | Yes, bare `TX;` rejected (P1 always required). `RIG_PTT_ON_DATA` mapped to TX0 (TX1 not documented). |
++| **VD** | VOX delay (0000-1200, unit 100ms, val 0-12) | `kenwood_set_level` / `kenwood_get_level` | Yes, hardware minimum ~500ms |
++| **VG** | VOX gain (000-010, 000=VOX off) | `rgo_one_set_level` / `rgo_one_get_level` | Yes, kenwood 0-9 bypassed, RGO 0-10 |
++| **XT** | XIT on/off | `kenwood_set_func` / `kenwood_get_func` | Yes |
++
++### IF frame format (TS-480 compatible, 37 bytes)
++
++The `IF;` command returns the full transceiver status. The response is stored in
++`priv->info` in kenwood.c and used internally by virtually all poll-based functions.
++
++| Position | Field | Hamlib use |
++|---|---|---|
++| [0..1] | `"IF"` identifier | Response validation (`kenwood_safe_transaction`) |
++| [2..12] | VFO A frequency, 11 digits (Hz) | `kenwood_get_freq`, `kenwood_get_vfo_if` |
++| [13..16] | Field delimiter (4 spaces) | (separator, not parsed) |
++| [17..22] | RIT/XIT offset incl. sign (6 chars) | `kenwood_get_rit`, `kenwood_get_xit` |
++| [23] | XIT on/off | `kenwood_get_func(XIT)` |
++| [24] | RIT on/off | `kenwood_get_func(RIT)` |
++| [25] | Receive mode indicator | Not used by Hamlib |
++| [26..27] | Memory channel (2 digits) | `kenwood_get_mem` |
++| [28] | TX state: 0=RX, 1=TX | `kenwood_get_ptt` |
++| [29] | Mode: 1=LSB, 2=USB, 3=CW, 4=FM, 5=AM, 6=FSK, 7=CW-R | `kenwood_get_mode` |
++| [30] | VFO function | `kenwood_get_vfo_if`, `kenwood_get_split_vfo_if` |
++| [31] | Scan on/off | Not used by Hamlib |
++| [32] | Split | `kenwood_get_split_vfo_if` |
++| [33] | Tone type | Not used by Hamlib |
++| [34..35] | Tone number (2 digits) | `kenwood_get_ctcss_tone` |
++| [36] | Trailing space | (padding) |
++
++Positions [0]/[1] are used for validation, not counted as "data" fields.
++Positions [25], [31], [33] are received but not evaluated by any Hamlib function.
++
++The `_parse_if_frame()` helper in `test_rgo_one.py` uses positions [2..12] (frequency),
++[28] (TX state), and [29] (mode) to validate AI-mode IF frames during `test_raw_cat`.
++
++### RGO commands NOT implemented
++
++| CAT command | Description | Reason |
++|---|---|---|
++| **AI** | Auto-info: sends IF frame automatically on changes (transceive mode) | Hamlib transceive support is rudimentary and barely used by any logging software. Polling is sufficient for practical operation. Hamlib disables AI on every connect (`AI0;` in `kenwood_open`). **Tested via raw CAT** in `test_raw_cat`: AI2 (periodic IF frames every ~1.5 s) and AI1 (change-notification IF frames after BU/BD) are captured and parsed. |
++| **FS** | Fine tuning (1Hz step on/off) | Purely manual operation; no meaningful use case for CAT control. **Tested via raw CAT** in `test_raw_cat`: read/set/verify/restore cycle using `send_no_response`. |
++| **PB** | Play CW/SSB memory messages (4 channels, PBP1P2) | Hamlib has no standardised API for memory message playback. `send_morse` (KY) is implemented for live CW, but memory playback is not addressed by any logging software via Hamlib. Direct use via `rigctl w "PB11;"` is possible without any backend changes. Could become relevant if Hamlib introduces a memory message API. **Tested read-only via raw CAT** in `test_raw_cat`. |
++
++### Deliberately NOT implemented
++
++| CAT command | Description | Reason |
++|---|---|---|
++| **EX** | Extended menu (000-083): 84 configuration parameters (sidetone, keyer mode, display, scan, ...) | The menu as a whole cannot be meaningfully mapped -- each entry would need to be individually implemented as a Hamlib config token, and logging software does not access these parameters anyway. Individual EX entries can be added as dedicated level or config parameters if needed (e.g. CW pitch via EX). |
++| **UN** | Transceiver unlock (service command) | Relevant only for factory service, no use in normal operation. |
++
++### Kenwood commands in the code, NOT in the RGO reference
++
++These commands are used by delegated Kenwood functions and are not documented in the
++RGO CAT manual. They may or may not work via TS-480 compatibility.
++
++| CAT command | Used for | Risk |
++|---|---|---|
++| **AG0** | AF gain (volume) | Medium -- basic function, likely TS-480-compatible |
++| **SQ0** | Squelch | Medium -- likely TS-480-compatible |
++| **SR** | Reset (VFO/master) | Medium -- `kenwood_reset` delegated |
++
++### Deliberately removed commands (vs. TS-480)
++
++| Function | Reason |
++|---|---|
++| **BY** (DCD/busy) | Not in RGO manual. `dcd_type = RIG_DCD_NONE` set. |
++| **PR** (speech processor on/off) | Not in RGO manual. Use `PL` level instead of FUNC_COMP. |
++| **VX** (VOX on/off) | Not in RGO manual. VOX is disabled via `VG000` (gain=0). |
++| **NR** (noise reduction) | No direct CAT command. NR is optionally fitted; control (on/off + dB attenuation) is via EX menu item 44. Could be implemented as `LVL_NR` / `FUNC_NR` via EX once individual EX entries are added. |
++| **PT** (CW pitch direct) | Not in RGO manual. Would be possible via EX menu. |
++| **UP/DN** (frequency up/down) | Not in RGO manual. Removed from VFO_OPS. |
++| **VV** (VFO copy) | Not in RGO manual. Removed from VFO_OPS. |
++| **CWPITCH** level | No direct command. Would need to be implemented via EX menu. |
++
++## Summary
++
++| Category | Count |
++|---|---|
++| CAT commands per RGO reference FW 1.08 (excl. UN) | 40 |
++| Implemented and verified | 39 |
++| Not implemented | 3 (AI, FS, PB) |
++| Deliberately not implemented | 2 (EX, UN) |
++| Additional Kenwood commands (undocumented) | 3 (AG0, SQ0, SR) |
++
++## Known limitations
++
++| Area | Limitation |
++|---|---|
++| **PA (preamp)** | CAT manual v1.01 documents `Set: PAP1P2;` (e.g. `PA10;` = on). This is incorrect -- the firmware silently ignores P2. The correct format is `PA1;` / `PA0;` (TS-480 format, no P2). The ANSWER format `PAP1P2;` is correct. |
++| **NL (noise blanker level)** | `NL000` is ignored by the firmware (FW 1.10): the level stays at its previous value (measured: `NL000` at level 005, read-back still `NL005`). `NL001` (1/16 ≈ 6 %) is the smallest effective value; the test script uses it as the lower bound. CAT manual 1.04 states 000 to 016. |
++| **VD (VOX delay)** | Under FW 1.10 values below 500 ms are also accepted and read back (measured: `VD0000`, `VD0100`). Whether the hardware applies them cannot be checked via CAT. The test script checks 500 ms (`val.i=5`, `VD0500`) and 1200 ms. |
++| **SD (break-in delay)** | Older firmware versions may cap the maximum value below 1200ms. |
++| **SM (S-meter)** | The Kenwood function for unknown models sends bare `SM;` instead of `SM0;`. A custom implementation is therefore required. |
++| **Passband / filter width (FLT key "NAR")** | The rig reports no filter width via CAT (`MD;` returns the mode only). The width shown by `rigctl m` is a nominal value assumed by Hamlib (CW 200 Hz, SSB 2700 Hz) or the last value set, held in the Hamlib cache -- not a hardware value. The FLT key (display "NAR", variable filter) can neither be set nor read via CAT. |
++| **TX (PTT)** | Bare `TX;` without P1 is rejected by the rig. P1 is mandatory. Only TX0 (mic/normal) and TX2 (tune) are documented in the CAT manual. `RIG_PTT_ON_DATA` is mapped to TX0 -- TX1 is not documented. Mapping to TX0 provides maximum compatibility with logging and digital mode software (WSJT-X, fldigi). |
++| **RIT/XIT** | RU/RD P1 is in 10Hz steps (values 00000-00500 = 0-5000Hz). Hamlib RIT value in Hz is divided by 10. |
++| **Menu item 33 (RTS as PTT)** | If menu item 33 is set to RTS=ON, the rig goes to transmit immediately on connect: Linux asserts RTS HIGH when opening the serial port, and the RGO ONE interprets this as PTT. **Menu item 33 must be set to OFF** when using CAT (rigctld). |
++| **MW — delete memory channel (delete_channel)** | `MW P1=0, FREQ=0` works from **FW 1.10** (verified on hardware, 2026-10-07); FW 1.09 rejected it with `?`. The backend reads every written or deleted slot back via `MR`. In memory mode the firmware ignores `MW` without answer; the backend then returns `-RIG_ERJCTED` (switch the rig to VFO mode with the M/V button first). Hamlib 4.7.1 itself never calls `delete_channel`; it is only reachable through the backend capabilities. |
++| **PTT via RTS on Windows** | The Windows CDC ACM driver `usbser.sys` only sends the USB control request `SET_CONTROL_LINE_STATE` to the device when DTR changes — pure RTS-only changes are silently discarded by the driver. The firmware therefore never receives the RTS state change. This driver bug has been known since 2008 and has never been fixed by Microsoft. **Workaround (implemented in the backend):** After every RTS change, DTR is written back once with its current value unchanged (`post_set_rts` callback). This forces a `SET_CONTROL_LINE_STATE` request carrying the updated RTS state. The workaround is compiled in only on Windows (`#if defined(WIN32)`); it is not active on Linux or macOS, where the CDC ACM driver forwards RTS changes correctly. Affects only PTT via RTS (`--ptt-type RTS`); CAT PTT (`TX0`/`RX`) works without restriction on all platforms. |
++
++## Test script
++
++The automated test script `test-dev/test_rgo_one.py` starts rigctld automatically
++(if not already running), tests all CAT commands with set-and-verify semantics,
++and prints a summary.
++
++```bash
++cd rigs/rgo/test-dev
++
++# Standard test (no PTT, no tuner)
++python3 test_rgo_one.py -r /dev/ttyACM0 -s 9600
++
++# With shorter delay (faster, slightly less stable)
++python3 test_rgo_one.py -r /dev/ttyACM0 -s 9600 --delay 0.3
++
++# Use a running rigctld instance
++python3 test_rgo_one.py --port 4532
++
++# Include PTT test (transmits! connect antenna or dummy load)
++python3 test_rgo_one.py -r /dev/ttyACM0 -s 9600 --ptt
++
++# Include antenna tuner cycle (transmits! TX2 = full tune cycle)
++python3 test_rgo_one.py -r /dev/ttyACM0 -s 9600 --tune
++
++# Keep rigctld running after test
++python3 test_rgo_one.py -r /dev/ttyACM0 -s 9600 --no-stop
++```
++
++Options:
++
++| Option | Description | Default |
++|---|---|---|
++| `-r DEVICE` | Serial device | `/dev/ttyACM0` |
++| `-s BAUD` | Baud rate | `9600` |
++| `--port PORT` | rigctld port (use running instance) | `4532` |
++| `--delay SEC` | Pause between set and get | `0.5` |
++| `--ptt` | Include PTT test (transmits!) | off |
++| `--tune` | Include antenna tuner cycle (transmits!) | off |
++| `--no-stop` | Keep rigctld running after test | off |
++
++Expected result (with `--ptt` and `--tune`):
++
++```
++--- Raw CAT commands (not in Hamlib API): AI, FS, PB ---
++  [OK]   AI: off (disabled by Hamlib on connect)  (AI0;)
++         (waiting ~1.5 s for AI2 periodic IF frame ...)
++  [OK]   AI2: periodic IF frame received and parsed  (freq=7.0260 MHz  mode=CW  tx=0)
++  [OK]   AI2: restored AI0  (AI0;)
++  [OK]   AI1: change-notification mode set  (AI1;)
++  [OK]   AI1: IF frame received after BU (band up)  (freq=10.1150 MHz  mode=CW)
++  [OK]   AI1: IF frame received after BD (band restored)  (freq=7.0260 MHz)
++  [OK]   AI: final verify AI0 (auto-info disabled)  (AI0;)
++  [OK]   FS: query fine tuning  (FS1;)
++  [OK]   FS: set off (FS0)  (FS0;)
++  [OK]   FS: restore (FS1)  (FS1;)
++  [OK]   PB: query memory playback  (ch=0 buf=00 (stop))
++========================================
++RESULT: 92/93 passed
++  OK:      92
++  FAILED:  0
++  SKIPPED: 1
++========================================
++```
++
++Without `--ptt` and `--tune`, PTT and tuner cycle are skipped
++(approx. 85/93 passed, approx. 8 skipped).
++The one permanent SKIP (`get_channel via Hamlib API`) is an upstream limitation:
++the netrigctl backend does not forward channel ops over the network; it works
++directly (`rigctl -m 43001 h 0 1`).
++The AI1 BD restore test may also be skipped if the rig is already on the lowest band
++(no band-change event is triggered by BD).
++
++## Changelog
++
++### Version 20261007.0 (current)
++
++- **Safety nets hardened:** The guards (mode readback in `set_mode`, pre-TX
++  check in `set_ptt`, `send_morse`, V6 also `send_voice_mem`) now read the
++  active mode directly with `MD;` (`rgo_one_read_live_mode`) instead of via
++  `kenwood_get_mode`, which returns without a result for `RIG_VFO_B`. A mode
++  that cannot be read stays `RIG_MODE_NONE` and is refused.
++- README: note on passband/FLT key, `delete_channel` updated for FW 1.10.
++- Missing changelog section 20260822.0 added.
++- NL and VD rows in the known limitations updated for FW 1.10 (NL000 is
++  ignored; VD below 500 ms is accepted).
++- **`.version`** bumped to `20261007.0` (both models).
++
++### Version 20260924.0
++
++- **MW write verification** (V6 only): FW 1.10 does not execute `MW` in
++  memory mode and gives no indication (CAT manual 1.04). `set_channel` and
++  `delete_channel` now read the channel back via `MR` and return
++  `-RIG_ERJCTED` if the write/delete was not executed.
++  Remedy: switch the rig to VFO mode with the M/V button.
++- **`.version`** bumped to `20260924.0` (both models).
++
++### Version 20260921.1
++
++- **V6 RX frequency limits corrected**: `rx_range_list1`/`rx_range_list2`
++  changed from 1800-29700 kHz to 1500-30000 kHz, per the FW 1.10 release
++  notes ("RGO ONE V6 absolute frequency limits are now corrected and are:
++  1.5MHz < f <= 30MHz"). V6 only -- the release notes are V6-specific, V1-V5
++  unchanged. TX band segments (amateur band plan) unchanged, independent of
++  this.
++- **`.version`** bumped to `20260921.1` (both models, for consistency even
++  though only V6 code changed).
++
++### Version 20260921.0
++
++- **Safety nets against TX in the wrong mode** (triggered by a real hardware
++  incident: CW was keyed while the rig was still in SSB, destroying a driver
++  transistor):
++  - `rgo_one_set_mode`/`rgo_one_v1v5_set_mode`: `MD` is a fire-and-forget
++    command with no confirmation in the response. Every mode change is now
++    verified by readback -- returns `-RIG_EPROTO` instead of a silent
++    `RIG_OK` on mismatch.
++  - `rgo_one_set_ptt`/`rgo_one_v1v5_set_ptt`: reads the current mode live
++    before every `TX0` command; refuses TX if that fails or returns
++    `RIG_MODE_NONE`.
++  - `rgo_one_send_morse`/`rgo_one_v1v5_send_morse` (new): `kenwood_send_morse()`
++    sends the `KY` command directly, completely bypassing `set_ptt`. The
++    generic Hamlib core (`rig_send_morse()`) already has a CW/CWR check, but
++    it uses `rig_get_mode()`, which may serve a cached value up to 500ms old.
++    Added a live re-verification immediately before keying.
++  - `rgo_one_send_voice_mem`/`rgo_one_stop_voice_mem` (new, V6 only): the `PB`
++    command (playback of stored CW/SSB memory messages, channels 1-4) was
++    **not wired to the Hamlib API at all** before -- reachable only via raw
++    CAT, with zero protection. Now available via `.send_voice_mem`/
++    `.stop_voice_mem`; playback is only permitted while the rig is verified
++    live to be in CW/CWR (CAT cannot tell which channel holds CW vs. SSB
++    content -- erring on the safe side). `PB0` (stop) is always allowed
++    unconditionally.
++  - Not added to V1-V5: `PB` is not in the confirmed command list there
++    (fw2.51a, Don WB8YQJ).
++- **`.version`** bumped to `20260921.0` (both models).
++
++### Version 20260822.0
++
++- **`delete_channel` implemented** (`rgo_one_delete_channel`): sends
++  `MW P1=0, FREQ=0` as an explicit delete command (Boris' FW 1.09
++  specification). Not implemented in FW 1.09 (the firmware rejects the command
++  with `?`); works from FW 1.10.
++- **`get_channel` FW 1.09 adaptation:** from FW 1.09 an empty channel gives no
++  response (timeout instead of an all-zero answer as in FW 1.08); correctly
++  reported as `-RIG_ENAVAIL`.
++- **`delete_channel` callback** registered in `include/hamlib/rig.h` and
++  `src/rig.c`.
++- New row `MW -- delete_channel` in the known limitations.
++
++### Version 20260612.2
++
++- **`rgo_one_set_channel` bug fixed**: for non-split channels the TX slot (P1=1)
++  was written with frequency 0. The RGO ONE firmware deletes the entire channel
++  entry when TX freq=0 -- different from the Kenwood TS-480, where TX=0 means
++  "no split" but the channel remains valid. Fixed by: TX slot receives the same
++  frequency and mode as the RX slot for non-split. `get_channel` already correctly
++  treats TX==RX as split=OFF.
++- **test_rgo_one.py**: VFO mode restore at test start (`FR0;`) prevents failures
++  caused by the rig being in memory-channel mode from a previous test run.
++  `test_mem()` now uses `FR0;` instead of `FA;` to exit memory-channel mode
++  (FA is silently ignored in memory mode). `test_channel()` tests MW write+MR
++  readback for both non-split and split; get_channel via netrigctl is documented
++  as SKIP (upstream limitation; works directly: `rigctl -m 43001 h 0 1`).
++  `EXPECTED_BACKEND_VERSION` updated to `20260612.2`.
++
++### Version 20260612.1
++
++- **`MR;` / `MW;` implemented** (`get_channel` / `set_channel`): full memory channel
++  read and write — frequency, mode, tuning step, NB/PRE/ATT/AGC/FIL.
++  Format verified from CAT manual v1.03 and tested against hardware.
++  Empty channels return freq=0 → `-RIG_ENAVAIL`.
++  Split memory: RX slot (P1=0) and TX slot (P1=1) written/read independently;
++  split detected when TX freq ≠ 0 and TX freq ≠ RX freq.
++- **`MC;` bug fixed**: `set_mem` sent `MC05;` (2 digits) instead of `MC005;`
++  (3 digits per manual P1+P2 format). Corrected to `MC0%02d`.
++- **test_rgo_one.py**: new `test_channel()` — checks MR raw format, non-split and
++  split write+readback via MW/MR, cleanup. CAT reference updated to v1.03.
++
++### Version 20260612.0
++
++New CAT commands from RGO ONE V6 FW 1.08:
++
++- **`ID;` format change (FW 1.08+)**: `ID;` now returns only the model number
++  (`ID006`) instead of the previous combined response (`ID006 <fw> <sn1> <sn2>`).
++  `rgo_one_open()` detects both formats: new FW → verbose log; old FW → `RIG_DEBUG_WARN`
++  with a recommendation to update. Connection proceeds normally in both cases since
++  most CAT commands work on old firmware.
++- **`FW;` — firmware version** (FW 1.08+): returns `FW0108` (= v1.08).
++  Used in `rgo_one_get_info()`. Silently skipped on old firmware.
++- **`SN;` — µC serial numbers** (FW 1.08+): returns
++  `SN 20303656 32435013 005D0069` (three hex values, space-separated).
++  Used in `rgo_one_get_info()`. Silently skipped on old firmware.
++- **`get_info` output updated**: now returns
++  `"RGO ONE V6 ID006 FW1.08 SN:20303656 32435013 005D0069"` (FW 1.08+),
++  or `"RGO ONE V6 ID006"` on old firmware.
++- **`MC;` — memory channel recall** (FW 1.08+): `set_mem` / `get_mem` implemented.
++  `set_mem(n)` sends `MC<nn>;` to recall memory channel 00-99.
++  `get_mem()` reads the current channel via `MC;` (`MC000`..`MC099`).
++  Note: recalling an empty (unprogrammed) channel is silently ignored by the firmware.
++  `chan_list` declares 100 memory channels (0-99).
++- **test_rgo_one.py**: `test_id()` updated for FW 1.08+ short format; new subtests
++  for `FW;` (version parse) and `SN;` (serial numbers); new `test_mem()` for MC.
++  `EXPECTED_BACKEND_VERSION` updated to `20260612.0`.
++
++### Version 20260603.0
++
++- **`rgo_one.c` renamed to `rgo_one_v6.c`**: file name now reflects the hardware version.
++- **V6 `model_name`**: changed from `"RGO ONE"` to `"RGO ONE V6"` so both models are
++  clearly distinguishable in software rig lists.
++- **New backend `rgo_one_v1v5.c`** (model 43002, `RIG_MODEL_RGOONE_V1V5`, `"RGO ONE V1-V5"`):
++  covers the older hardware versions (Atmel AVR, FTDI USB) based on the confirmed
++  CAT command set from Don WB8YQJ (firmware 2.51a, January 2024).
++  - Confirmed commands: FA FB FR FT GT IF KS LK MD RC RT RU RX TX0 BD BU AG0
++  - PTT: `TX0;`/`RX;` only — `TX1` not available; `RIG_PTT_ON_DATA` mapped to `TX0`
++    for maximum compatibility with WSJT-X, fldigi and logging software
++  - No RTS workaround (FTDI chip handles RTS correctly on Windows)
++  - `set_rit`: only positive offsets (RD not confirmed); returns `-RIG_ENAVAIL` for negative
++  - ID detection: no strict ID check — V1-V5 sub-versions may return different values
++
++### Version 20260529.0
++
++- **PTT via RTS on Windows (`post_set_rts`)**: New optional callback `post_set_rts`
++  in `rig_caps` (`include/hamlib/rig.h`). Called by `rig_set_ptt()` (`src/rig.c`) after
++  every `ser_set_rts()` call in the `RIG_PTT_SERIAL_RTS` branch, if the callback is set.
++  The RGO ONE backend implements this callback as `rgo_one_post_set_rts()` under
++  `#if defined(WIN32)`: reads the current DTR state and writes it back unchanged, forcing
++  `usbser.sys` to send `SET_CONTROL_LINE_STATE` with the updated RTS bit included.
++  On Linux and macOS neither the function nor the caps entry is compiled in.
++
++### Version 20260507.0
++
++- **TX (PTT) RIG_PTT_ON_DATA**: replaced `TX1;` with `TX0;`.
++  TX1 is not documented in CAT manual v1.02 -- only TX0 (mic/normal) and
++  TX2 (tune) are specified. `RIG_PTT_ON_DATA` is now mapped to TX0 for
++  maximum compatibility with logging and digital mode software (WSJT-X,
++  fldigi).
++- **test_rgo_one.py**: PTT test extended to cover data PTT (T 3 -> TX0).
++- **test_rgo_one.py `test_raw_cat`**: New test section for AI, FS, and PB --
++  CAT commands documented in the manual but with no Hamlib API mapping.
++  - **AI**: Verifies `AI0` on connect (Hamlib requirement); enables `AI2`
++    and captures a periodic IF frame via the `w` trick (rigctld reads the
++    spontaneous `;`-terminated frame as the "response"); enables `AI1` and
++    captures a change-notification IF frame triggered by `BU`; restores
++    `AI0` and verifies.
++  - **FS**: Read→set toggled value→verify→restore→verify cycle.
++  - **PB**: Read-only query; channel and buffer status reported.
++- **test_rgo_one.py `send_no_response()`**: New `RigCtl` helper for set
++  commands that produce no rig response (`FS0;`, `FS1;`, `AI0;`, `AI1;`).
++  rigctld's `w` (send_raw) waits indefinitely for a `;`-terminated reply;
++  `send_no_response` uses a 2 s subprocess timeout and treats
++  `TimeoutExpired` as success.
++- **test_rgo_one.py `_parse_if_frame()`**: New `TestSuite` static method
++  that parses a TS-480/RGO ONE IF frame from raw rigctl output, handling
++  trailing `\x00` null bytes. Returns `(freq_hz, mode, tx_state)` from
++  positions [2..12], [29], [28].
++
++### Version 20260424.5
++
++- **TX (PTT)**: Custom `rgo_one_set_ptt` replaces `kenwood_set_ptt`.
++  `kenwood_set_ptt` sends bare `TX;` for `RIG_PTT_ON`, but the RGO requires a P1
++  parameter at all times. `TX;` without P1 is rejected by the rig.
++  New: `TX0;` (mic/normal PTT), `TX1;` (data PTT), `RX;` (PTT off).
++- **G TUNE (antenna tuner cycle)**: Custom `rgo_one_vfo_op` replaces `kenwood_vfo_op`.
++  `kenwood_vfo_op(RIG_OP_TUNE)` would have sent `AC111;`, which is wrong for the RGO.
++  The RGO starts the tune cycle via `TX2;` (transmit in tune mode).
++  BD and BU continue to delegate to `kenwood_vfo_op`.
++- **test_rgo_one.py**: NL minimum test replaces the skip: tests NL001 (1/16 ≈ 6%)
++  instead of 0%. All output translated to English.
++
++### Version 20260424.4
++
++- **PA (PREAMP) set_level**: Set format changed from `PA10` to `PA1` (no P2).
++  CAT manual v1.01 documents `PAP1P2;` (P2=0 always), but firmware silently ignores P2.
++  Diagnosis: `PA1;` works, `PA10;` does not.
++  Note: set format is shorter than answer format -- analogous to `RA`.
++- **test_rgo_one.py**: All output translated to English.
++
++### Version 20260424.3
++
++- **SM (STRENGTH)**: Custom implementation replaces `kenwood_get_level`.
++  `kenwood_get_level` sends bare `SM;` for unknown models; the RGO only understands
++  `SM0;`. Custom implementation sends `SM0` with expected_len=7 and applies str_cal.
++- **BD/BU test**: Test now verifies that the frequency actually changed after
++  BAND_UP/DOWN (previously only checked the return code).
++- **NL 0% test**: Skipped (hardware minimum > 0). Replaced by NL001 test in 20260424.5.
++
++### Version 20260424.2
++
++- **SD (BKIN_DLYMS) set_level**: Removed `/ 10`. SD parameter is direct ms (0000-1200),
++  not 10ms units.
++- **RIT set_level**: `abs((int)rit)` corrected to `abs((int)rit) / 10`.
++  RGO RU/RD P1 is in 10Hz steps. Previously, a 500Hz RIT sent `RU00500` (= 5000Hz).
++- **test_rgo_one.py**: `--delay` option (default 0.5s), NaN detection,
++  "error =" detection, VD minimum set to 5 (500ms hardware limit),
++  rigctld binary version check.
++
++### Version 20260424.1
++
++- **PC (RFPOWER)**: Custom implementation replaces kenwood.
++  `kenwood_get_power_minmax()` sends `PC;PC000;PC;PC255;PC;PC000;` -- not supported
++  by the RGO. New: direct `PC;` with 0-50 scaling.
++- **VG (VOXGAIN)**: Custom implementation replaces kenwood.
++  Kenwood scales 0-9; RGO needs 0-10.
++- **PL (COMP)**: Custom implementation replaces kenwood.
++  Kenwood scales 0-100 and sends equal values for P1 and P2.
++  RGO needs 0-10; P2 (output level) is read for get.
++- **SD (BKIN_DLYMS)**: Custom implementation replaces kenwood.
++  Kenwood caps at 1000ms; RGO supports up to 1200ms.
++- **level_gran**: Correct entries for RFPOWER (step=1/50), VOXGAIN (step=1/10),
++  COMP (step=1/10), VOXDELAY (max=12 = 1200ms).
++  Guards `NO_LVL_RFPOWER` and `NO_LVL_VOXGAIN` added to `level_gran_kenwood.h`.
++- **test_rgo_one.py**: Python test script under `test-dev/`. Starts rigctld
++  automatically, tests all CAT commands (set+verify) and prints a summary.
++
++### Version 20260422.1
++
++- **mfg_name**: "ARGO" -> "LZ2JR"
++- **status**: `RIG_STATUS_ALPHA` -> `RIG_STATUS_BETA`
++- **MG** micgain_max: 100 -> 10 (RGO: 000-010)
++- **RM** meter: completely rewritten (RGO single-query format instead of
++  TS-480 triple-answer, numbering 0=pwr/1=ALC/2=SWR/3=COMP)
++- **ML** monitor: scaling *9/*9 -> *10/*10 (RGO: 000-010)
++- **NL** noise blanker: scaling *10/*10 -> *16/*16 (RGO: 000-016)
++- **LK** lock: `LK11` -> `LK10` (P2=0 always per RGO manual)
++- **PA** preamp: `PA1` -> `PA10` (P2=0 added -- later reverted in 20260424.4
++  because firmware ignores P2)
++- **SM/STR_CAL**: calibration table adjusted to range 0-15 (RGO: 0000-0015)
++- **SWR_CAL**: calibration table adjusted to range 0-15
++- **RFPOWER_METER**: division by 20 -> 15 (RGO SM max = 15)
++- **KS** level_gran: 4-60 -> 5-45 WPM (RGO: 005-045)
++- **SD** level_gran: 30-3000 -> 0-1200 ms (RGO: 0000-1200)
++- **DCD**: removed (`RIG_DCD_NONE`, BY not documented)
++- **FUNC**: COMP and VOX removed (PR/VX not in RGO manual)
++- **CWPITCH**: removed from level list (no direct command)
++- **VFO_OPS**: UP, DOWN, CPY removed (UP/DN/VV not documented)
++- **ID check**: `rgo_one_open()` verifies "006" in ID response
++- **get_info**: returns firmware/serial from ID response
++
++### Version 20260422.0 (initial release)
++
++- Initial implementation based on TS-480SAT protocol
++
++## Building
++
++```bash
++# Prerequisites (Debian/Ubuntu)
++sudo apt install build-essential automake autoconf libtool pkg-config \
++    libusb-1.0-0-dev libreadline-dev
++
++# In the Hamlib source directory
++autoreconf -fi
++./configure
++make -j$(nproc)
++
++# Check that both RGO ONE models are recognised
++./tests/rigctl -l | grep -i rgo
++# Expected output:
++# 43001  LZ2JR   RGO ONE V6     20260612.2   Beta   RIG_MODEL_RGOONE_V6
++# 43002  LZ2JR   RGO ONE V1-V5  20260603.0   Beta   RIG_MODEL_RGOONE_V1V5
++
++```
++
++## System-wide installation
++
++```bash
++cd hamlib-4.7.1
++./configure --prefix=/usr/local
++make -j$(nproc)
++sudo make install
++sudo ldconfig
++```
++
++Verify afterwards:
++
++```bash
++/usr/local/bin/rigctl --version
++ls /usr/local/lib/libhamlib.so.5*
++```
++
++## Usage
++
++The RGO ONE appears on the USB port as `/dev/ttyACM0` (CDC ACM, no FTDI adapter
++needed). The exact device name may vary -- check with:
++
++```bash
++ls /dev/ttyACM* /dev/ttyUSB*
++```
++
++### rigctl (interactive)
++
++```bash
++/usr/local/bin/rigctl -m 43001 -r /dev/ttyACM0 -s 9600
++
++# Common commands:
++#   f          - read frequency
++#   F 14250000 - set frequency (14.250 MHz)
++#   m          - read operating mode
++#   M USB 2700 - set USB with 2.7 kHz filter
++#   t          - read PTT state
++#   T 1        - PTT on
++#   T 0        - PTT off
++#   G TUNE     - start antenna tuner cycle (TX2, transmits!)
++
++```
++
++For verbose debug output (diagnostics):
++
++```bash
++/usr/local/bin/rigctl -m 43001 -r /dev/ttyACM0 -s 9600 -vvvv f
++```
++
++### rigctld + QLog (Flatpak)
++
++QLog as a Flatpak bundles its own older Hamlib without RGO ONE support.
++The solution: run `rigctld` as a daemon with the new Hamlib -- QLog then
++connects over the network and does not need its own Hamlib for the protocol.
++
++**Tested and confirmed** with QLog 0.50.0 (Flatpak) on 2026-04-27.
++
++**Step 1:** Start rigctld.
++
++In the background (normal operation):
++
++```bash
++/usr/local/bin/rigctld -m 43001 -r /dev/ttyACM0 -s 57600 -t 4532
++```
++
++In the foreground with log output (diagnostics):
++
++```bash
++/usr/local/bin/rigctld -m 43001 -r /dev/ttyACM0 -s 57600 -t 4532 -vvv
++```
++
++Log levels: `-v` warning, `-vv` verbose, `-vvv` debug, `-vvvv` trace (very detailed).
++
++**Step 2:** Configure in QLog under "New device":
++
++| Field | Value |
++|---|---|
++| Manufacturer | Hamlib |
++| Model | NET rigctl |
++| Address | 127.0.0.1 |
++| Port | 4532 |
++
++This keeps QLog unchanged while still using the current Hamlib version.
++The same approach works for WSJT-X, fldigi, and other Flatpak applications.
++
++**Note on baud rate:** For the USB port (CDC ACM) the host-side baud rate does not
++matter -- the USB protocol handles communication. Menu item 22 in the RGO ONE applies
++to the TTL UART (DB15 rear connector) only. `-s 57600` is a safe default.
++
++## Serial interface
++
++- **USB:** Virtual COM port (USB driver required)
++- **TTL UART:** DB15 connector on rear panel (pin 4=GND, pin 5=TX, pin 6=RX)
++- **Baud rates:** 9600, 19200, 38400, 57600 (menu item 22 applies to TTL port only)
++- **Format:** 8N1, no handshake
++
++## Files
++
++| File | Description |
++|---|---|
++| `rgo_one_v6.c` | Backend implementation — RGO ONE V6 |
++| `rgo_one_v1v5.c` | Backend implementation — RGO ONE V1-V5 |
++| `Makefile.am` | Build configuration |
++| `RGO_ONE_V6_CAT_Manual1.03.pdf` | Official CAT reference v1.03 |
++| `test-dev/test_rgo_one.py` | Automated test script (set+verify all CAT commands) |
++| `test-dev/run_rigctl.sh` | Helper script to start/stop/status rigctld |
++| `test-dev/sync_from_release.sh` | Compare/update source files from the current release ZIP |
++| `test-dev/create_release.sh` | Rebuild patch and release ZIPs |
++| `test-dev/build_and_install.sh` | Compile and install Hamlib system-wide (Linux) |
++| `README.de.md` | This file (German) |
++| `README.en.md` | This file (English) |
++
++Modified core Hamlib files (included in the patch and release ZIP for manual integration, including Windows/MinGW builds):
++
++| File | Description |
++|---|---|
++| `configure.ac` | Build system — RGO backend registered |
++| `src/register.c` | Backend registration |
++| `include/hamlib/rig.h` | post_set_rts callback (Windows PTT fix) |
++| `src/rig.c` | post_set_rts call in rig_set_ptt() |
++| `include/hamlib/riglist.h` | Model IDs RGO ONE V6 (43001) and V1-V5 (43002) |
+diff --git a/rigs/rgo/rgo_one_v1v5.c b/rigs/rgo/rgo_one_v1v5.c
+new file mode 100644
+index 000000000..7650812ff
+--- /dev/null
++++ b/rigs/rgo/rgo_one_v1v5.c
+@@ -0,0 +1,752 @@
++/*
++ *  Hamlib RGO backend - RGO ONE V1-V5 description
++ *  Copyright (c) 2026 by Joerg DJ4WD
++ *
++ *
++ *   This library is free software; you can redistribute it and/or
++ *   modify it under the terms of the GNU Lesser General Public
++ *   License as published by the Free Software Foundation; either
++ *   version 2.1 of the License, or (at your option) any later version.
++ *
++ *   This library is distributed in the hope that it will be useful,
++ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
++ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ *   Lesser General Public License for more details.
++ *
++ *   You should have received a copy of the GNU Lesser General Public
++ *   License along with this library; if not, write to the Free Software
++ *   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
++ *
++ */
++
++/*
++ * RGO ONE V1-V5 - All-Mode HF Transceiver
++ * Atmel AVR microcontroller, FTDI USB chip
++ * Reduced TS-480SAT-compatible CAT protocol (firmware 2.51a)
++ *
++ * Confirmed working CAT commands (Don WB8YQJ, fw2.51a, Jan 2024):
++ *   AG0 BD BU FA FB FR FS FT GT ID IF KS LK MD RC RT RU RX TX0
++ *
++ * Key differences from V6:
++ *   - ID; returns ID020 (same as TS-480SAT, not ID006)
++ *   - TX1, TX2 not available (only TX0 and RX)
++ *   - No AC, PC, RA, RD, RG, RM, SM, NL, ML, PL, SD, VD, VG
++ *   - No RTS workaround needed (FTDI chip handles RTS correctly on Windows)
++ *   - XIT not confirmed; omitted from FUNC list
++ *
++ * ID detection: ID response is NOT used for strict model matching.
++ * Sub-versions of V1-V5 may return different values; any ID is accepted.
++ *
++ * Testing: backend untested against real V1-V5 hardware by the author.
++ * Based on verified command list from Don WB8YQJ (fw2.51a).
++ */
++
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++
++#include "hamlib/rig.h"
++#include "cal.h"
++#include "idx_builtin.h"
++#include "iofunc.h"
++#include "misc.h"
++#include "register.h"
++#include "serial.h"
++#include "kenwood.h"
++
++#define RGOONE_V1V5_ALL_MODES (RIG_MODE_LSB|RIG_MODE_USB|RIG_MODE_CW|RIG_MODE_CWR|RIG_MODE_AM|RIG_MODE_FM|RIG_MODE_RTTY)
++#define RGOONE_V1V5_OTHER_TX_MODES (RIG_MODE_CW|RIG_MODE_CWR|RIG_MODE_LSB|RIG_MODE_USB|RIG_MODE_FM|RIG_MODE_RTTY)
++#define RGOONE_V1V5_AM_TX_MODES RIG_MODE_AM
++#define RGOONE_V1V5_VFO (RIG_VFO_A|RIG_VFO_B)
++
++/*
++ * Confirmed levels (fw2.51a):
++ *   GT (AGC 000/001/002), AG0 (AF gain, via kenwood), SQ0 (squelch, via kenwood),
++ *   KS (keyer speed 005-045 WPM)
++ *
++ * NOT confirmed: PC, RG, SM, ML, NL, PA, RA, PL, SD, VD, VG, RM meters
++ */
++#define RGOONE_V1V5_LEVEL_GET (RIG_LEVEL_AF|RIG_LEVEL_SQL|RIG_LEVEL_AGC|RIG_LEVEL_KEYSPD)
++#define RGOONE_V1V5_LEVEL_SET (RIG_LEVEL_AF|RIG_LEVEL_SQL|RIG_LEVEL_AGC|RIG_LEVEL_KEYSPD)
++
++/*
++ * Confirmed functions (fw2.51a):
++ *   RIT (RT), LOCK (LK)
++ *
++ * NOT confirmed: XIT (XT not in command list), NB, TUNER, MON, FBKIN
++ */
++#define RGOONE_V1V5_FUNC_ALL (RIG_FUNC_RIT|RIG_FUNC_LOCK)
++
++/* BD and BU confirmed; TUNE (TX2) not available */
++#define RGOONE_V1V5_VFO_OPS (RIG_OP_BAND_UP|RIG_OP_BAND_DOWN)
++
++/*
++ * rgo_one_v1v5_set_func
++ *
++ * LOCK: LK command (LK00=unlock, LK10=lock; P2=0 always, same as V6).
++ * Others delegated to kenwood_set_func.
++ */
++static int rgo_one_v1v5_set_func(RIG *rig, vfo_t vfo, setting_t func, int status)
++{
++    char buf[20];
++
++    rig_debug(RIG_DEBUG_TRACE, "%s called\n", __func__);
++
++    switch (func)
++    {
++    case RIG_FUNC_LOCK:
++        SNPRINTF(buf, sizeof(buf), "LK%c0", (status == 0) ? '0' : '1');
++        RETURNFUNC2(kenwood_transaction(rig, buf, NULL, 0));
++
++    default:
++        return kenwood_set_func(rig, vfo, func, status);
++    }
++}
++
++/*
++ * rgo_one_v1v5_get_func
++ *
++ * LOCK: LK answer LKP1P2; (P1=0/1, P2=0 always).
++ */
++static int rgo_one_v1v5_get_func(RIG *rig, vfo_t vfo, setting_t func, int *status)
++{
++    char buf[20];
++    int retval;
++
++    ENTERFUNC;
++
++    switch (func)
++    {
++    case RIG_FUNC_LOCK:
++        retval = kenwood_safe_transaction(rig, "LK", buf, sizeof(buf), 4);
++
++        if (retval != RIG_OK)
++        {
++            RETURNFUNC(retval);
++        }
++
++        *status = buf[2] != '0';
++        break;
++
++    default:
++        RETURNFUNC(kenwood_get_func(rig, vfo, func, status));
++    }
++
++    RETURNFUNC(RIG_OK);
++}
++
++/*
++ * rgo_one_v1v5_set_level
++ *
++ * Only AGC (GT) requires a custom implementation.
++ * AF (AG0) and SQL (SQ0) are handled by kenwood via ag_format=2.
++ * KS (keyer speed) is handled by kenwood.
++ */
++static int rgo_one_v1v5_set_level(RIG *rig, vfo_t vfo, setting_t level,
++                                  value_t val)
++{
++    char levelbuf[16];
++    int kenwood_val;
++
++    rig_debug(RIG_DEBUG_TRACE, "%s called\n", __func__);
++
++    switch (level)
++    {
++    case RIG_LEVEL_AGC:
++        switch (val.i)
++        {
++        case RIG_AGC_OFF:
++            kenwood_val = 0;
++            break;
++
++        case RIG_AGC_FAST:
++            kenwood_val = 1;
++            break;
++
++        case RIG_AGC_SLOW:
++            kenwood_val = 2;
++            break;
++
++        default:
++            rig_debug(RIG_DEBUG_ERR, "%s: unsupported agc value", __func__);
++            return -RIG_EINVAL;
++        }
++
++        SNPRINTF(levelbuf, sizeof(levelbuf), "GT%03d", kenwood_val);
++        return kenwood_transaction(rig, levelbuf, NULL, 0);
++
++    default:
++        return kenwood_set_level(rig, vfo, level, val);
++    }
++}
++
++/*
++ * rgo_one_v1v5_get_level
++ */
++static int rgo_one_v1v5_get_level(RIG *rig, vfo_t vfo, setting_t level,
++                                  value_t *val)
++{
++    char ackbuf[50];
++    size_t ack_len, ack_len_expected;
++    int retval;
++
++    ENTERFUNC;
++
++    switch (level)
++    {
++    case RIG_LEVEL_AGC:
++        retval = kenwood_transaction(rig, "GT", ackbuf, sizeof(ackbuf));
++        ack_len_expected = 5;
++
++        if (RIG_OK != retval)
++        {
++            RETURNFUNC(retval);
++        }
++
++        ack_len = strlen(ackbuf);
++
++        if (ack_len != ack_len_expected)
++        {
++            RETURNFUNC(-RIG_EPROTO);
++        }
++
++        switch (ackbuf[ack_len_expected - 1])
++        {
++        case '0':
++            val->i = RIG_AGC_OFF;
++            break;
++
++        case '1':
++            val->i = RIG_AGC_FAST;
++            break;
++
++        case '2':
++            val->i = RIG_AGC_SLOW;
++            break;
++
++        default:
++            RETURNFUNC(-RIG_EPROTO);
++        }
++
++        RETURNFUNC(RIG_OK);
++
++    default:
++        RETURNFUNC(kenwood_get_level(rig, vfo, level, val));
++    }
++}
++
++/*
++ * rgo_one_read_live_mode
++ *
++ * Safety-net helper: reads the rig's active mode with a plain "MD;" query.
++ * The TX/CW/mode-set guards must not use kenwood_get_mode() for this: with
++ * is_emulation set (as in this backend) kenwood_get_mode() returns RIG_OK
++ * *without writing *mode* when called for RIG_VFO_B, which left the guards
++ * reading an uninitialised variable. MD does not depend on the VFO argument
++ * anyway -- it always reports the mode the rig is in right now, which is
++ * what matters before keying. *mode is RIG_MODE_NONE on any failure.
++ */
++static int rgo_one_read_live_mode(RIG *rig, rmode_t *mode)
++{
++    char buf[20];
++    int retval, kmode;
++
++    *mode = RIG_MODE_NONE;
++
++    retval = kenwood_safe_transaction(rig, "MD", buf, sizeof(buf), 3);
++
++    if (retval != RIG_OK)
++    {
++        return retval;
++    }
++
++    kmode = (buf[2] <= '9') ? buf[2] - '0' : buf[2] - 'A' + 10;
++    *mode = kenwood2rmode(kmode, kenwood_caps(rig)->mode_table);
++
++    /* same RTTY->PKT remapping as kenwood_get_mode() applies for emulations */
++    if (*mode == RIG_MODE_RTTY) { *mode = RIG_MODE_PKTLSB; }
++
++    if (*mode == RIG_MODE_RTTYR) { *mode = RIG_MODE_PKTUSB; }
++
++    return RIG_OK;
++}
++
++/*
++ * rgo_one_v1v5_set_mode
++ *
++ * Safety net (see rgo_one_v6.c rgo_one_set_mode for the incident this
++ * addresses): RGO MD is a fire-and-forget set command with no
++ * confirmation in the response. A mode-set command returning RIG_OK does
++ * not guarantee the rig actually changed mode -- the firmware itself
++ * does not guard against this. Read the mode back immediately and fail
++ * loudly on mismatch instead of letting the caller believe a mode change
++ * happened that didn't.
++ */
++static int rgo_one_v1v5_set_mode(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t width)
++{
++    int retval;
++    rmode_t confirmed_mode = RIG_MODE_NONE;
++
++    ENTERFUNC;
++
++    retval = kenwood_set_mode(rig, vfo, mode, width);
++
++    if (retval != RIG_OK)
++    {
++        RETURNFUNC(retval);
++    }
++
++    retval = rgo_one_read_live_mode(rig, &confirmed_mode);
++
++    if (retval != RIG_OK)
++    {
++        rig_debug(RIG_DEBUG_ERR,
++                  "%s: mode set to %s but could not verify by readback: %s\n",
++                  __func__, rig_strrmode(mode), rigerror(retval));
++        RETURNFUNC(retval);
++    }
++
++    if (confirmed_mode != mode)
++    {
++        rig_debug(RIG_DEBUG_ERR,
++                  "%s: mode verification failed -- requested %s, rig reports %s\n",
++                  __func__, rig_strrmode(mode), rig_strrmode(confirmed_mode));
++        RETURNFUNC(-RIG_EPROTO);
++    }
++
++    RETURNFUNC(RIG_OK);
++}
++
++/*
++ * rgo_one_v1v5_set_ptt
++ *
++ * Only TX0 (normal transmit) and RX are confirmed on V1-V5.
++ * TX1 (data) and TX2 (tune) are not implemented.
++ *
++ * Safety net: refuse to key TX if the CAT link cannot confirm a sane,
++ * known mode right now (see rgo_one_v6.c rgo_one_set_ptt for rationale --
++ * this addresses a real hardware incident on V6, same architecture here).
++ * Callers remain responsible for verifying the *correct* mode via
++ * rig_get_mode() before every TX -- this API carries no mode parameter.
++ */
++static int rgo_one_v1v5_set_ptt(RIG *rig, vfo_t vfo, ptt_t ptt)
++{
++    const char *cmd;
++    int retval;
++
++    ENTERFUNC;
++
++    switch (ptt)
++    {
++    case RIG_PTT_ON:
++    case RIG_PTT_ON_MIC:
++    case RIG_PTT_ON_DATA:
++    {
++        rmode_t cur_mode = RIG_MODE_NONE;
++
++        retval = rgo_one_read_live_mode(rig, &cur_mode);
++
++        if (retval != RIG_OK)
++        {
++            rig_debug(RIG_DEBUG_ERR,
++                      "%s: refusing TX -- could not read current mode: %s\n",
++                      __func__, rigerror(retval));
++            RETURNFUNC(retval);
++        }
++
++        if (cur_mode == RIG_MODE_NONE)
++        {
++            rig_debug(RIG_DEBUG_ERR,
++                      "%s: refusing TX -- rig reports no valid mode\n", __func__);
++            RETURNFUNC(-RIG_EPROTO);
++        }
++
++        cmd = "TX0";
++        break;
++    }
++
++    case RIG_PTT_OFF:
++        cmd = "RX";
++        break;
++
++    default:
++        RETURNFUNC(-RIG_EINVAL);
++    }
++
++    retval = kenwood_transaction(rig, cmd, NULL, 0);
++
++    if (ptt == RIG_PTT_OFF) { hl_usleep(100 * 1000); }
++
++    RETURNFUNC(retval);
++}
++
++/*
++ * rgo_one_v1v5_send_morse
++ *
++ * Safety net (see rgo_one_v6.c rgo_one_send_morse for full rationale):
++ * kenwood_send_morse() sends raw "KY" commands directly, bypassing
++ * rig_set_ptt()/rgo_one_v1v5_set_ptt() entirely. Upstream rig_send_morse()
++ * (src/rig.c) already refuses non-CW/CWR modes, but via rig_get_mode(),
++ * which may serve a cached value up to 500ms old instead of a live read.
++ * Re-verify live, immediately before keying. Note: KY is not in the
++ * confirmed-working command list for V1-V5 (fw2.51a) -- guarded regardless,
++ * since an unconfirmed command on unfamiliar hardware is more reason for
++ * caution, not less.
++ */
++static int rgo_one_v1v5_send_morse(RIG *rig, vfo_t vfo, const char *msg)
++{
++    rmode_t cur_mode = RIG_MODE_NONE;
++    int retval;
++
++    ENTERFUNC;
++
++    retval = rgo_one_read_live_mode(rig, &cur_mode);
++
++    if (retval != RIG_OK)
++    {
++        rig_debug(RIG_DEBUG_ERR,
++                  "%s: refusing CW keying -- could not read current mode: %s\n",
++                  __func__, rigerror(retval));
++        RETURNFUNC(retval);
++    }
++
++    if ((cur_mode & (RIG_MODE_CW | RIG_MODE_CWR)) == 0)
++    {
++        rig_debug(RIG_DEBUG_ERR,
++                  "%s: refusing CW keying -- rig is in %s, not CW/CWR\n",
++                  __func__, rig_strrmode(cur_mode));
++        RETURNFUNC(-RIG_EINVAL);
++    }
++
++    RETURNFUNC(kenwood_send_morse(rig, vfo, msg));
++}
++
++/*
++ * rgo_one_v1v5_set_rit
++ *
++ * RU (up) and RC (clear) are confirmed on V1-V5.
++ * RD (down) is NOT available -- negative offsets cannot be set.
++ */
++static int rgo_one_v1v5_set_rit(RIG *rig, vfo_t vfo, shortfreq_t rit)
++{
++    char buf[20];
++    int retval;
++    int rit_enabled;
++    int xit_enabled;
++
++    ENTERFUNC;
++
++    if (rit < 0)
++    {
++        /* RD not available on V1-V5 */
++        RETURNFUNC(-RIG_ENAVAIL);
++    }
++
++    if (rit > 5000)
++    {
++        RETURNFUNC(-RIG_EINVAL);
++    }
++
++    retval = kenwood_get_func(rig, vfo, RIG_FUNC_RIT, &rit_enabled);
++
++    if (retval != RIG_OK)
++    {
++        RETURNFUNC(retval);
++    }
++
++    xit_enabled = 0;
++
++    if (!rit_enabled && !xit_enabled)
++    {
++        retval = kenwood_set_func(rig, vfo, RIG_FUNC_RIT, 1);
++
++        if (retval != RIG_OK)
++        {
++            RETURNFUNC(retval);
++        }
++    }
++
++    retval = kenwood_transaction(rig, "RC", NULL, 0);
++
++    if (retval != RIG_OK)
++    {
++        RETURNFUNC(retval);
++    }
++
++    if (!rit_enabled && !xit_enabled)
++    {
++        retval = kenwood_set_func(rig, vfo, RIG_FUNC_RIT, 0);
++
++        if (retval != RIG_OK)
++        {
++            RETURNFUNC(retval);
++        }
++    }
++
++    if (rit == 0)
++    {
++        RETURNFUNC(RIG_OK);
++    }
++
++    /* RU P1 in 10 Hz steps (same as V6 RU/RD) */
++    SNPRINTF(buf, sizeof(buf), "RU%05d", (int) rit / 10);
++    retval = kenwood_transaction(rig, buf, NULL, 0);
++
++    RETURNFUNC(retval);
++}
++
++/*
++ * rgo_one_v1v5_get_rit
++ *
++ * Read RIT offset from IF frame (TS-480 compatible, position 18).
++ */
++static int rgo_one_v1v5_get_rit(RIG *rig, vfo_t vfo, shortfreq_t *rit)
++{
++    int retval;
++    char buf[7];
++    struct kenwood_priv_data *priv = STATE(rig)->priv;
++
++    ENTERFUNC;
++
++    if (!rit)
++    {
++        RETURNFUNC(-RIG_EINVAL);
++    }
++
++    retval = kenwood_get_if(rig);
++
++    if (retval != RIG_OK)
++    {
++        RETURNFUNC(retval);
++    }
++
++    memcpy(buf, &priv->info[18], 5);
++    buf[6] = '\0';
++    *rit = atoi(buf);
++
++    RETURNFUNC(RIG_OK);
++}
++
++/*
++ * rgo_one_v1v5_get_info
++ */
++static const char *rgo_one_v1v5_get_info(RIG *rig)
++{
++    return "RGO ONE V1-V5";
++}
++
++static struct kenwood_priv_caps rgo_one_v1v5_priv_caps =
++{
++    .cmdtrm = EOM_KEN,
++};
++
++/*
++ * rgo_one_v1v5_init
++ *
++ * ag_format = 2: AG0xxx format for AF gain (same as TS-480 and V6).
++ * micgain_min/max: not used (MG not confirmed), but set to TS-480 defaults.
++ */
++static int rgo_one_v1v5_init(RIG *rig)
++{
++    struct kenwood_priv_data *priv;
++    int retval;
++
++    ENTERFUNC;
++
++    retval = kenwood_init(rig);
++
++    if (retval != RIG_OK)
++    {
++        RETURNFUNC(retval);
++    }
++
++    priv = (struct kenwood_priv_data *) STATE(rig)->priv;
++
++    priv->ag_format = 2;
++    priv->micgain_min = 0;
++    priv->micgain_max = 100;
++
++    RETURNFUNC(RIG_OK);
++}
++
++/*
++ * rgo_one_v1v5_open
++ *
++ * ID response is NOT used for strict model matching: V1-V5 sub-versions
++ * may return different ID values. Any response (or no response) is accepted.
++ */
++static int rgo_one_v1v5_open(RIG *rig)
++{
++    int retval;
++    char idbuf[64];
++    struct kenwood_priv_data *priv = (struct kenwood_priv_data *) STATE(rig)->priv;
++
++    ENTERFUNC;
++
++    retval = kenwood_open(rig);
++
++    if (retval != RIG_OK)
++    {
++        RETURNFUNC(retval);
++    }
++
++    retval = kenwood_transaction(rig, "ID", idbuf, sizeof(idbuf));
++
++    if (retval == RIG_OK)
++    {
++        rig_debug(RIG_DEBUG_VERBOSE, "%s: RGO ONE V1-V5 ID: %s\n", __func__, idbuf);
++    }
++    else
++    {
++        rig_debug(RIG_DEBUG_WARN, "%s: could not read ID, assuming RGO ONE V1-V5\n",
++                  __func__);
++    }
++
++    priv->is_emulation = 1;
++
++    RETURNFUNC(RIG_OK);
++}
++
++/*
++ * RGO ONE V1-V5 rig capabilities
++ *
++ * Based on confirmed CAT commands from Don WB8YQJ (firmware 2.51a, Jan 2024).
++ * Untested against real V1-V5 hardware by the author.
++ */
++struct rig_caps rgo_one_v1v5_caps =
++{
++    RIG_MODEL(RIG_MODEL_RGOONE_V1V5),
++    .model_name = "RGO ONE V1-V5",
++    .mfg_name = "LZ2JR",
++    .version = "20261007.0",
++    .copyright = "LGPL",
++    .status = RIG_STATUS_BETA,
++    .rig_type = RIG_TYPE_TRANSCEIVER,
++    .ptt_type = RIG_PTT_RIG,
++    .dcd_type = RIG_DCD_NONE,
++    .port_type = RIG_PORT_SERIAL,
++    .serial_rate_min = 9600,
++    .serial_rate_max = 115200,
++    .serial_data_bits = 8,
++    .serial_stop_bits = 1,
++    .serial_parity = RIG_PARITY_NONE,
++    .serial_handshake = RIG_HANDSHAKE_NONE,
++    .write_delay = 0,
++    .post_write_delay = 0,
++    .timeout = 500,
++    .retry = 3,
++    .max_rit = kHz(5.0),
++    .max_xit = Hz(0),   /* XIT not confirmed on V1-V5 */
++    .max_ifshift = Hz(0),
++    .targetable_vfo = RIG_TARGETABLE_FREQ,
++    .transceive = RIG_TRN_RIG,
++    .agc_level_count = 3,
++    .agc_levels = { RIG_AGC_OFF, RIG_AGC_FAST, RIG_AGC_SLOW },
++
++    .rx_range_list1 = {
++        {kHz(1800), kHz(29700), RGOONE_V1V5_ALL_MODES, -1, -1, RGOONE_V1V5_VFO},
++        RIG_FRNG_END,
++    },
++    .tx_range_list1 = {
++        {kHz(1800),  kHz(2000),  RGOONE_V1V5_OTHER_TX_MODES, 5000, 50000, RGOONE_V1V5_VFO},
++        {kHz(1800),  kHz(2000),  RGOONE_V1V5_AM_TX_MODES, 5000, 12500, RGOONE_V1V5_VFO},
++        {kHz(3500),  kHz(4000),  RGOONE_V1V5_OTHER_TX_MODES, 5000, 50000, RGOONE_V1V5_VFO},
++        {kHz(3500),  kHz(4000),  RGOONE_V1V5_AM_TX_MODES, 5000, 12500, RGOONE_V1V5_VFO},
++        {kHz(7000),  kHz(7300),  RGOONE_V1V5_OTHER_TX_MODES, 5000, 50000, RGOONE_V1V5_VFO},
++        {kHz(7000),  kHz(7300),  RGOONE_V1V5_AM_TX_MODES, 5000, 12500, RGOONE_V1V5_VFO},
++        {kHz(10100), kHz(10150), RGOONE_V1V5_OTHER_TX_MODES, 5000, 50000, RGOONE_V1V5_VFO},
++        {kHz(10100), kHz(10150), RGOONE_V1V5_AM_TX_MODES, 5000, 12500, RGOONE_V1V5_VFO},
++        {kHz(14000), kHz(14350), RGOONE_V1V5_OTHER_TX_MODES, 5000, 50000, RGOONE_V1V5_VFO},
++        {kHz(14000), kHz(14350), RGOONE_V1V5_AM_TX_MODES, 5000, 12500, RGOONE_V1V5_VFO},
++        {kHz(18068), kHz(18168), RGOONE_V1V5_OTHER_TX_MODES, 5000, 50000, RGOONE_V1V5_VFO},
++        {kHz(18068), kHz(18168), RGOONE_V1V5_AM_TX_MODES, 5000, 12500, RGOONE_V1V5_VFO},
++        {kHz(21000), kHz(21450), RGOONE_V1V5_OTHER_TX_MODES, 5000, 50000, RGOONE_V1V5_VFO},
++        {kHz(21000), kHz(21450), RGOONE_V1V5_AM_TX_MODES, 5000, 12500, RGOONE_V1V5_VFO},
++        {kHz(24890), kHz(24990), RGOONE_V1V5_OTHER_TX_MODES, 5000, 50000, RGOONE_V1V5_VFO},
++        {kHz(24890), kHz(24990), RGOONE_V1V5_AM_TX_MODES, 5000, 12500, RGOONE_V1V5_VFO},
++        {kHz(28000), kHz(29700), RGOONE_V1V5_OTHER_TX_MODES, 5000, 50000, RGOONE_V1V5_VFO},
++        {kHz(28000), kHz(29700), RGOONE_V1V5_AM_TX_MODES, 5000, 12500, RGOONE_V1V5_VFO},
++        RIG_FRNG_END,
++    },
++    .rx_range_list2 = {
++        {kHz(1800), kHz(29700), RGOONE_V1V5_ALL_MODES, -1, -1, RGOONE_V1V5_VFO},
++        RIG_FRNG_END,
++    },
++    .tx_range_list2 = {
++        {kHz(1800),  kHz(2000),  RGOONE_V1V5_OTHER_TX_MODES, 5000, 50000, RGOONE_V1V5_VFO},
++        {kHz(1800),  kHz(2000),  RGOONE_V1V5_AM_TX_MODES, 5000, 12500, RGOONE_V1V5_VFO},
++        {kHz(3500),  kHz(4000),  RGOONE_V1V5_OTHER_TX_MODES, 5000, 50000, RGOONE_V1V5_VFO},
++        {kHz(3500),  kHz(4000),  RGOONE_V1V5_AM_TX_MODES, 5000, 12500, RGOONE_V1V5_VFO},
++        {kHz(7000),  kHz(7300),  RGOONE_V1V5_OTHER_TX_MODES, 5000, 50000, RGOONE_V1V5_VFO},
++        {kHz(7000),  kHz(7300),  RGOONE_V1V5_AM_TX_MODES, 5000, 12500, RGOONE_V1V5_VFO},
++        {kHz(10100), kHz(10150), RGOONE_V1V5_OTHER_TX_MODES, 5000, 50000, RGOONE_V1V5_VFO},
++        {kHz(10100), kHz(10150), RGOONE_V1V5_AM_TX_MODES, 5000, 12500, RGOONE_V1V5_VFO},
++        {kHz(14000), kHz(14350), RGOONE_V1V5_OTHER_TX_MODES, 5000, 50000, RGOONE_V1V5_VFO},
++        {kHz(14000), kHz(14350), RGOONE_V1V5_AM_TX_MODES, 5000, 12500, RGOONE_V1V5_VFO},
++        {kHz(18068), kHz(18168), RGOONE_V1V5_OTHER_TX_MODES, 5000, 50000, RGOONE_V1V5_VFO},
++        {kHz(18068), kHz(18168), RGOONE_V1V5_AM_TX_MODES, 5000, 12500, RGOONE_V1V5_VFO},
++        {kHz(21000), kHz(21450), RGOONE_V1V5_OTHER_TX_MODES, 5000, 50000, RGOONE_V1V5_VFO},
++        {kHz(21000), kHz(21450), RGOONE_V1V5_AM_TX_MODES, 5000, 12500, RGOONE_V1V5_VFO},
++        {kHz(24890), kHz(24990), RGOONE_V1V5_OTHER_TX_MODES, 5000, 50000, RGOONE_V1V5_VFO},
++        {kHz(24890), kHz(24990), RGOONE_V1V5_AM_TX_MODES, 5000, 12500, RGOONE_V1V5_VFO},
++        {kHz(28000), kHz(29700), RGOONE_V1V5_OTHER_TX_MODES, 5000, 50000, RGOONE_V1V5_VFO},
++        {kHz(28000), kHz(29700), RGOONE_V1V5_AM_TX_MODES, 5000, 12500, RGOONE_V1V5_VFO},
++        RIG_FRNG_END,
++    },
++    .tuning_steps = {
++        {RGOONE_V1V5_ALL_MODES, 1},
++        {RGOONE_V1V5_ALL_MODES, 10},
++        {RGOONE_V1V5_ALL_MODES, 100},
++        {RGOONE_V1V5_ALL_MODES, kHz(1)},
++        RIG_TS_END,
++    },
++    .filters = {
++        {RIG_MODE_SSB, kHz(2.7)},
++        {RIG_MODE_CW | RIG_MODE_CWR, Hz(200)},
++        {RIG_MODE_CW | RIG_MODE_CWR, kHz(2.2)},
++        {RIG_MODE_AM, kHz(6)},
++        {RIG_MODE_FM, kHz(12)},
++        {RIG_MODE_RTTY, Hz(500)},
++        RIG_FLT_END,
++    },
++    .vfo_ops = RGOONE_V1V5_VFO_OPS,
++    .level_gran =
++    {
++#define NO_LVL_KEYSPD
++#include "level_gran_kenwood.h"
++#undef NO_LVL_KEYSPD
++        /* KS: 005-045 WPM (same as V6) */
++        [LVL_KEYSPD] = {.min = {.i = 5}, .max = {.i = 45}, .step = {.i = 1}},
++    },
++
++    .priv = (void *)& rgo_one_v1v5_priv_caps,
++    .rig_init = rgo_one_v1v5_init,
++    .rig_open = rgo_one_v1v5_open,
++    .rig_cleanup = kenwood_cleanup,
++    .set_freq = kenwood_set_freq,
++    .get_freq = kenwood_get_freq,
++    .set_rit = rgo_one_v1v5_set_rit,
++    .get_rit = rgo_one_v1v5_get_rit,
++    .set_mode = rgo_one_v1v5_set_mode,
++    .get_mode = kenwood_get_mode,
++    .set_vfo = kenwood_set_vfo,
++    .get_vfo = kenwood_get_vfo_if,
++    .set_split_vfo = kenwood_set_split_vfo,
++    .get_split_vfo = kenwood_get_split_vfo_if,
++    .get_ptt = kenwood_get_ptt,
++    .set_ptt = rgo_one_v1v5_set_ptt,
++    .get_info = rgo_one_v1v5_get_info,
++    .reset = kenwood_reset,
++    .has_set_level = RGOONE_V1V5_LEVEL_SET,
++    .has_get_level = RGOONE_V1V5_LEVEL_GET,
++    .set_level = rgo_one_v1v5_set_level,
++    .get_level = rgo_one_v1v5_get_level,
++    .has_get_func = RGOONE_V1V5_FUNC_ALL,
++    .has_set_func = RGOONE_V1V5_FUNC_ALL,
++    .set_func = rgo_one_v1v5_set_func,
++    .get_func = rgo_one_v1v5_get_func,
++    .send_morse = rgo_one_v1v5_send_morse,
++    .wait_morse = rig_wait_morse,
++    .vfo_op = kenwood_vfo_op,
++    .hamlib_check_rig_caps = HAMLIB_CHECK_RIG_CAPS
++};
+diff --git a/rigs/rgo/rgo_one_v6.c b/rigs/rgo/rgo_one_v6.c
+new file mode 100644
+index 000000000..9f14549f3
+--- /dev/null
++++ b/rigs/rgo/rgo_one_v6.c
+@@ -0,0 +1,1887 @@
++/*
++ *  Hamlib RGO backend - RGO ONE V6 description
++ *  Copyright (c) 2026 by Joerg DJ4WD
++ *
++ *
++ *   This library is free software; you can redistribute it and/or
++ *   modify it under the terms of the GNU Lesser General Public
++ *   License as published by the Free Software Foundation; either
++ *   version 2.1 of the License, or (at your option) any later version.
++ *
++ *   This library is distributed in the hope that it will be useful,
++ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
++ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ *   Lesser General Public License for more details.
++ *
++ *   You should have received a copy of the GNU Lesser General Public
++ *   License along with this library; if not, write to the Free Software
++ *   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
++ *
++ */
++
++/*
++ * RGO ONE V6 - All-Mode HF Transceiver (1.5-30 MHz receive, FW 1.10+;
++ * 1.8-29.7 MHz on older firmware -- see rx_range_list1/2 below)
++ * 50W CW/SSB/FM/RTTY, 12.5W AM
++ * TS-480SAT compatible CAT protocol
++ *
++ * CAT reference: RGO_ONE_V6_CAT_Manual1.03.pdf
++ *
++ * Documented CAT commands (FW 1.08+):
++ *   AC AI BD BU EX FA FB FR FS FT FW GT ID IF KS KY LK MC MD MG ML
++ *   MR MW NB NL PA PB PC PL RA RC RD RG RM RT RU RX SD SM SN TX VD VG XT
++ *
++ * NOT documented (TS-480 only, may or may not work):
++ *   AG0 SQ0 BY PR VX NR SR UP DN VV PT TY
++ */
++
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++
++#include "hamlib/rig.h"
++#include "cal.h"
++#include "cache.h"
++#include "idx_builtin.h"
++#include "iofunc.h"
++#include "misc.h"
++#include "register.h"
++#include "serial.h"
++#include "kenwood.h"
++
++#define RGOONE_ALL_MODES (RIG_MODE_LSB|RIG_MODE_USB|RIG_MODE_CW|RIG_MODE_CWR|RIG_MODE_AM|RIG_MODE_FM|RIG_MODE_RTTY)
++#define RGOONE_OTHER_TX_MODES (RIG_MODE_CW|RIG_MODE_CWR|RIG_MODE_LSB|RIG_MODE_USB|RIG_MODE_FM|RIG_MODE_RTTY)
++#define RGOONE_AM_TX_MODES RIG_MODE_AM
++#define RGOONE_VFO (RIG_VFO_A|RIG_VFO_B)
++
++/*
++ * Levels verified against CAT manual:
++ *   PC (000-050), RG (000-100), GT (000-002), MG (000-010),
++ *   KS (005-045), ML (000-010), NL (000-016), PA, RA, PL,
++ *   VD (0000-1200), VG (000-010), SD (0000-1200), SM (0-15),
++ *   RM (0=pwr, 1=ALC, 2=SWR, 3=COMP, reading 0000-0015)
++ *
++ * NOT in CAT manual (delegated to kenwood, may not work):
++ *   AF (AG0), SQL (SQ0), CWPITCH (PT/EX)
++ */
++#define RGOONE_LEVEL_GET (RIG_LEVEL_RFPOWER|RIG_LEVEL_AF|RIG_LEVEL_RF|RIG_LEVEL_SQL|RIG_LEVEL_AGC|RIG_LEVEL_MICGAIN|RIG_LEVEL_STRENGTH|RIG_LEVEL_KEYSPD| \
++    RIG_LEVEL_MONITOR_GAIN|RIG_LEVEL_NB|RIG_LEVEL_PREAMP|RIG_LEVEL_COMP|RIG_LEVEL_ATT|RIG_LEVEL_VOXDELAY|RIG_LEVEL_VOXGAIN|RIG_LEVEL_BKIN_DLYMS| \
++    RIG_LEVEL_SWR|RIG_LEVEL_COMP_METER|RIG_LEVEL_ALC|RIG_LEVEL_RFPOWER_METER)
++
++#define RGOONE_LEVEL_SET (RIG_LEVEL_RFPOWER|RIG_LEVEL_AF|RIG_LEVEL_RF|RIG_LEVEL_SQL|RIG_LEVEL_AGC|RIG_LEVEL_MICGAIN|RIG_LEVEL_KEYSPD| \
++    RIG_LEVEL_MONITOR_GAIN|RIG_LEVEL_NB|RIG_LEVEL_PREAMP|RIG_LEVEL_COMP|RIG_LEVEL_ATT|RIG_LEVEL_VOXDELAY|RIG_LEVEL_VOXGAIN|RIG_LEVEL_BKIN_DLYMS| \
++    RIG_LEVEL_METER)
++
++/*
++ * Functions verified against CAT manual:
++ *   NB (NB cmd), RIT (RT cmd), XIT (XT cmd), TUNER (AC cmd),
++ *   MON (ML cmd), FBKIN (SD cmd), LOCK (LK cmd)
++ *
++ * REMOVED (not in CAT manual):
++ *   COMP (PR cmd not documented, use PL level instead)
++ *   VOX (VX cmd not documented, use VG level, VG000=VOX off)
++ */
++#define RGOONE_FUNC_ALL (RIG_FUNC_NB|RIG_FUNC_RIT|RIG_FUNC_XIT| \
++    RIG_FUNC_TUNER|RIG_FUNC_MON|RIG_FUNC_FBKIN|RIG_FUNC_LOCK)
++
++#define RGOONE_VFO_OPS (RIG_OP_BAND_UP|RIG_OP_BAND_DOWN|RIG_OP_TUNE)
++
++/*
++ * S-meter calibration table
++ * RGO ONE SM: P2 = 0000-0015 (0 = no signal, 15 = max S9+)
++ */
++#define RGOONE_STR_CAL { 7, \
++    { \
++        {   0, -54 }, \
++        {   3, -36 }, \
++        {   5, -24 }, \
++        {   7, -12 }, \
++        {   9,   0 }, \
++        {  12,  20 }, \
++        {  15,  60 } \
++    } }
++
++/*
++ * SWR calibration table
++ * RGO ONE RM meter reading: 0000-0015
++ */
++#define RGOONE_SWR_CAL { 5, \
++    { \
++        {   0, 1.0f }, \
++        {   3, 1.5f }, \
++        {   6, 2.0f }, \
++        {   9, 3.0f }, \
++        {  15, 10.0f } \
++    } }
++
++/*
++ * rgo_one_set_func
++ *
++ * MON: ML command (ML000=off, ML001=on at level 1)
++ * LOCK: LK command (LK00=unlock, LK10=lock; P2=0 always per RGO manual)
++ * Others delegated to kenwood_set_func
++ */
++static int rgo_one_set_func(RIG *rig, vfo_t vfo, setting_t func, int status)
++{
++    char buf[20];
++
++    rig_debug(RIG_DEBUG_TRACE, "%s called\n", __func__);
++
++    switch (func)
++    {
++    case RIG_FUNC_MON:
++        /* RGO ML: 000=off, 001-010=monitor level */
++        SNPRINTF(buf, sizeof(buf), "ML00%c", (status == 0) ? '0' : '1');
++        RETURNFUNC2(kenwood_transaction(rig, buf, NULL, 0));
++
++    case RIG_FUNC_LOCK:
++        /* RGO LK: P1=0/1 (unlock/lock), P2=0 always */
++        SNPRINTF(buf, sizeof(buf), "LK%c0", (status == 0) ? '0' : '1');
++        RETURNFUNC2(kenwood_transaction(rig, buf, NULL, 0));
++
++    default:
++        return kenwood_set_func(rig, vfo, func, status);
++    }
++}
++
++/*
++ * rgo_one_get_func
++ *
++ * MON: ML command, answer MLP1P1P1; (3 digits, >0 means on)
++ * LOCK: LK command, answer LKP1P2; (P1=0/1, P2=0 always)
++ */
++static int rgo_one_get_func(RIG *rig, vfo_t vfo, setting_t func, int *status)
++{
++    char buf[20];
++    int retval;
++
++    ENTERFUNC;
++
++    switch (func)
++    {
++    case RIG_FUNC_MON:
++    {
++        int raw_value;
++        retval = kenwood_safe_transaction(rig, "ML", buf, sizeof(buf), 5);
++
++        if (retval != RIG_OK)
++        {
++            RETURNFUNC(retval);
++        }
++
++        sscanf(buf, "ML%d", &raw_value);
++
++        *status = (raw_value > 0);
++        break;
++    }
++
++    case RIG_FUNC_LOCK:
++        /* RGO LK answer: LKP1P2; where P1=0/1, P2=0 always */
++        retval = kenwood_safe_transaction(rig, "LK", buf, sizeof(buf), 4);
++
++        if (retval != RIG_OK)
++        {
++            RETURNFUNC(retval);
++        }
++
++        *status = buf[2] != '0';
++        break;
++
++    default:
++        RETURNFUNC(kenwood_get_func(rig, vfo, func, status));
++    }
++
++    RETURNFUNC(RIG_OK);
++}
++
++/*
++ * rgo_one_set_level
++ *
++ * RGO-specific level commands with correct value ranges from CAT manual:
++ *   RG: 000-100 (RF gain)
++ *   SQ0: not documented, delegated to kenwood
++ *   GT: 000/001/002 (AGC off/fast/slow)
++ *   ML: 000-010 (monitor gain, 000=off)
++ *   NL: 000-016 (noise blanker level)
++ *   PA: P1P2, P1=0/1, P2=0 (preamp)
++ *   RA: P1P1, 00/01 (attenuator)
++ *   RM: 0-3 (meter select: 0=pwr, 1=ALC, 2=SWR, 3=COMP)
++ *   PC: 000-050 (RF power, 0-50W; kenwood's minmax-logic not compatible)
++ *   VG: 000-010 (VOX gain; kenwood uses 0-9, RGO uses 0-10)
++ *   PL: P1P1P1P2P2P2 (speech processor; P1=input, P2=output, 000-010)
++ *   SD: 0000-1200 ms (CW break-in delay; kenwood caps at 1000ms)
++ */
++static int rgo_one_set_level(RIG *rig, vfo_t vfo, setting_t level,
++                             value_t val)
++{
++    char levelbuf[16];
++    int kenwood_val;
++
++    rig_debug(RIG_DEBUG_TRACE, "%s called\n", __func__);
++
++    switch (level)
++    {
++    case RIG_LEVEL_RF:
++        /* RGO RG: 000-100 */
++        kenwood_val = val.f * 100;
++        SNPRINTF(levelbuf, sizeof(levelbuf), "RG%03d", kenwood_val);
++        break;
++
++    case RIG_LEVEL_AF:
++        /* AG0: not in RGO manual, delegate to kenwood (may work via TS-480 compat) */
++        return kenwood_set_level(rig, vfo, level, val);
++
++    case RIG_LEVEL_SQL:
++        /* SQ0: not in RGO manual, delegate to kenwood (may work via TS-480 compat) */
++        return kenwood_set_level(rig, vfo, level, val);
++
++    case RIG_LEVEL_AGC:
++        /* RGO GT: 000=off, 001=fast, 002=slow */
++        switch (val.i)
++        {
++        case RIG_AGC_OFF:
++            kenwood_val = 0;
++            break;
++
++        case RIG_AGC_FAST:
++            kenwood_val = 1;
++            break;
++
++        case RIG_AGC_SLOW:
++            kenwood_val = 2;
++            break;
++
++        default:
++            rig_debug(RIG_DEBUG_ERR, "%s: unsupported agc value", __func__);
++            return -RIG_EINVAL;
++        }
++
++        SNPRINTF(levelbuf, sizeof(levelbuf), "GT%03d", kenwood_val);
++        break;
++
++    case RIG_LEVEL_MONITOR_GAIN:
++        /* RGO ML: 000-010 (000=off, 001-010=monitor level) */
++        kenwood_val = val.f * 10.0;
++        SNPRINTF(levelbuf, sizeof(levelbuf), "ML%03d", kenwood_val);
++        break;
++
++    case RIG_LEVEL_NB:
++        /* RGO NL: 000-016 */
++        kenwood_val = val.f * 16.0;
++        SNPRINTF(levelbuf, sizeof(levelbuf), "NL%03d", kenwood_val);
++        break;
++
++    case RIG_LEVEL_PREAMP:
++        /* RGO PA set: nur P1 -- "PA1" oder "PA0" (kein P2).
++         * Doku zeigt "PAP1P2;" aber Firmware ignoriert "PA10" stillschweigend.
++         * TS-480-Format "PA1"/"PA0" funktioniert. Answer ist weiterhin "PAP1P2;". */
++        if (val.i != 1 && val.i != 0)
++        {
++            RETURNFUNC2(-RIG_EINVAL);
++        }
++
++        SNPRINTF(levelbuf, sizeof(levelbuf), "PA%c", (val.i == 1) ? '1' : '0');
++        break;
++
++    case RIG_LEVEL_ATT:
++        /* RGO RA: P1=00/01 (off/on) */
++        if (val.i != 1 && val.i != 0)
++        {
++            RETURNFUNC2(-RIG_EINVAL);
++        }
++
++        SNPRINTF(levelbuf, sizeof(levelbuf), "RA%02d", (val.i == 1) ? 1 : 0);
++        break;
++
++    case RIG_LEVEL_METER:
++        /* RGO RM: 0=power, 1=ALC, 2=SWR, 3=COMP */
++        switch (val.i)
++        {
++        case RIG_METER_SWR:
++            kenwood_val = 2;
++            break;
++
++        case RIG_METER_COMP:
++            kenwood_val = 3;
++            break;
++
++        case RIG_METER_ALC:
++            kenwood_val = 1;
++            break;
++
++        default:
++            RETURNFUNC2(-RIG_EINVAL);
++        }
++
++        SNPRINTF(levelbuf, sizeof(levelbuf), "RM%d", kenwood_val);
++        break;
++
++    case RIG_LEVEL_RFPOWER:
++        /* RGO PC: 000-050 (50W max).
++         * kenwood's set_level uses kenwood_get_power_minmax() which sends
++         * "PC;PC000;PC;PC255;PC;PC000;" -- RGO only understands plain "PC;". */
++        kenwood_val = (int)(val.f * 50.0f + 0.5f);
++        if (kenwood_val < 0) { kenwood_val = 0; }
++        if (kenwood_val > 50) { kenwood_val = 50; }
++        SNPRINTF(levelbuf, sizeof(levelbuf), "PC%03d", kenwood_val);
++        break;
++
++    case RIG_LEVEL_VOXGAIN:
++        /* RGO VG: 000-010 (000=VOX off). kenwood uses 0-9 scale. */
++        kenwood_val = (int)(val.f * 10.0f + 0.5f);
++        SNPRINTF(levelbuf, sizeof(levelbuf), "VG%03d", kenwood_val);
++        break;
++
++    case RIG_LEVEL_COMP:
++        /* RGO PL: P1=input (000-010), P2=output (000-010, 000=compressor off).
++         * kenwood uses 0-100 scale; RGO uses 0-10. Both parameters set equal. */
++        kenwood_val = (int)(val.f * 10.0f + 0.5f);
++        SNPRINTF(levelbuf, sizeof(levelbuf), "PL%03d%03d", kenwood_val, kenwood_val);
++        break;
++
++    case RIG_LEVEL_BKIN_DLYMS:
++        /* RGO SD: 0000-1200 ms (direct ms, P1 range per manual).
++         * kenwood_set_level caps at 1000 ms; RGO supports up to 1200 ms. */
++        if (val.i < 0 || val.i > 1200)
++        {
++            RETURNFUNC2(-RIG_EINVAL);
++        }
++        SNPRINTF(levelbuf, sizeof(levelbuf), "SD%04d", val.i);
++        break;
++
++    default:
++        return kenwood_set_level(rig, vfo, level, val);
++    }
++
++    return kenwood_transaction(rig, levelbuf, NULL, 0);
++}
++
++/*
++ * rgo_one_read_meter
++ *
++ * RGO RM command:
++ *   Set: RMP1;  (select meter: 0=power, 1=ALC, 2=SWR, 3=COMP)
++ *   Read: RM;
++ *   Answer: RMP1P2P2P2P2;  (P1=meter type, P2=4-digit reading 0000-0015)
++ *
++ * This is different from TS-480 which returns all meters at once!
++ */
++static int rgo_one_read_meter(RIG *rig, int meter_type, int *meter_value)
++{
++    int retval;
++    char cmdbuf[10];
++    char ackbuf[20];
++    int type_read;
++    int value_read;
++
++    ENTERFUNC;
++
++    /* Select the desired meter */
++    SNPRINTF(cmdbuf, sizeof(cmdbuf), "RM%d", meter_type);
++    retval = kenwood_transaction(rig, cmdbuf, NULL, 0);
++
++    if (retval != RIG_OK)
++    {
++        RETURNFUNC(retval);
++    }
++
++    /* Read the meter value */
++    retval = kenwood_safe_transaction(rig, "RM", ackbuf, sizeof(ackbuf), 7);
++
++    if (retval != RIG_OK)
++    {
++        RETURNFUNC(retval);
++    }
++
++    /* Parse: RMP1P2P2P2P2 */
++    if (sscanf(ackbuf, "RM%1d%4d", &type_read, &value_read) != 2)
++    {
++        rig_debug(RIG_DEBUG_ERR, "%s: unexpected response '%s'\n", __func__, ackbuf);
++        RETURNFUNC(-RIG_EPROTO);
++    }
++
++    *meter_value = value_read;
++
++    RETURNFUNC(RIG_OK);
++}
++
++/*
++ * rgo_one_get_level
++ *
++ * Level reading with RGO-specific value ranges and formats.
++ */
++static int rgo_one_get_level(RIG *rig, vfo_t vfo, setting_t level,
++                             value_t *val)
++{
++    char ackbuf[50];
++    size_t ack_len, ack_len_expected;
++    int levelint;
++    int retval;
++
++    ENTERFUNC;
++
++    switch (level)
++    {
++    case RIG_LEVEL_AF:
++        /* AG0: not in RGO manual, delegate to kenwood */
++        RETURNFUNC(kenwood_get_level(rig, vfo, level, val));
++
++    case RIG_LEVEL_RF:
++        /* RGO RG: 000-100 */
++        retval = kenwood_transaction(rig, "RG", ackbuf, sizeof(ackbuf));
++
++        if (RIG_OK != retval)
++        {
++            RETURNFUNC(retval);
++        }
++
++        ack_len = strlen(ackbuf);
++
++        if (5 != ack_len)
++        {
++            RETURNFUNC(-RIG_EPROTO);
++        }
++
++        if (1 != sscanf(&ackbuf[2], "%d", &levelint))
++        {
++            RETURNFUNC(-RIG_EPROTO);
++        }
++
++        val->f = levelint / (float) 100;
++        RETURNFUNC(RIG_OK);
++
++    case RIG_LEVEL_SQL:
++        /* SQ0: not in RGO manual, delegate to kenwood */
++        RETURNFUNC(kenwood_get_level(rig, vfo, level, val));
++
++    case RIG_LEVEL_AGC:
++        /* RGO GT: 000/001/002 */
++        retval = kenwood_transaction(rig, "GT", ackbuf, sizeof(ackbuf));
++        ack_len_expected = 5;
++
++        if (RIG_OK != retval)
++        {
++            RETURNFUNC(retval);
++        }
++
++        ack_len = strlen(ackbuf);
++
++        if (ack_len != ack_len_expected)
++        {
++            RETURNFUNC(-RIG_EPROTO);
++        }
++
++        switch (ackbuf[ack_len_expected - 1])
++        {
++        case '0':
++            val->i = RIG_AGC_OFF;
++            break;
++
++        case '1':
++            val->i = RIG_AGC_FAST;
++            break;
++
++        case '2':
++            val->i = RIG_AGC_SLOW;
++            break;
++
++        default:
++            RETURNFUNC(-RIG_EPROTO);
++        }
++
++        RETURNFUNC(RIG_OK);
++
++    case RIG_LEVEL_STRENGTH:
++    {
++        /* RGO SM: SM0P2P2P2P2; P2=0000-0015.
++         * kenwood_get_level sends bare "SM" (no VFO digit) for non-TS480 rigs
++         * which the RGO does not understand. Send "SM0" directly. */
++        int raw_value;
++        if (CACHE(rig)->ptt != RIG_PTT_OFF)
++        {
++            val->i = -9 * 6;
++            RETURNFUNC(RIG_OK);
++        }
++        retval = kenwood_safe_transaction(rig, "SM0", ackbuf, sizeof(ackbuf), 7);
++        if (retval != RIG_OK) { RETURNFUNC(retval); }
++        sscanf(ackbuf + 3, "%d", &raw_value);
++        val->i = (int)rig_raw2val(raw_value, &rig->caps->str_cal);
++        RETURNFUNC(RIG_OK);
++    }
++
++    case RIG_LEVEL_MONITOR_GAIN:
++    {
++        /* RGO ML: 000-010 */
++        int raw_value;
++        retval = kenwood_safe_transaction(rig, "ML", ackbuf, sizeof(ackbuf), 5);
++
++        if (retval != RIG_OK)
++        {
++            RETURNFUNC(retval);
++        }
++
++        sscanf(ackbuf, "ML%d", &raw_value);
++
++        val->f = (float) raw_value / 10.0f;
++        break;
++    }
++
++    case RIG_LEVEL_NB:
++    {
++        /* RGO NL: 000-016 */
++        int raw_value;
++        retval = kenwood_safe_transaction(rig, "NL", ackbuf, sizeof(ackbuf), 5);
++
++        if (retval != RIG_OK)
++        {
++            RETURNFUNC(retval);
++        }
++
++        sscanf(ackbuf, "NL%d", &raw_value);
++
++        val->f = (float) raw_value / 16.0f;
++        break;
++    }
++
++    case RIG_LEVEL_PREAMP:
++        /* RGO PA: answer PAP1P2; (P1=0/1, P2=0) = 4 chars */
++        retval = kenwood_safe_transaction(rig, "PA", ackbuf, sizeof(ackbuf), 4);
++
++        if (retval != RIG_OK)
++        {
++            RETURNFUNC(retval);
++        }
++
++        val->i = ackbuf[2] == '1' ? 1 : 0;
++        break;
++
++    case RIG_LEVEL_ATT:
++        /* RGO RA: answer RAP1P1P2P2; = 6 chars, P1=00/01 */
++        retval = kenwood_safe_transaction(rig, "RA", ackbuf, sizeof(ackbuf), 6);
++
++        if (retval != RIG_OK)
++        {
++            RETURNFUNC(retval);
++        }
++
++        val->i = ackbuf[3] == '1' ? 1 : 0;
++        break;
++
++    case RIG_LEVEL_SWR:
++    {
++        /* RGO RM: meter 2 = SWR, reading 0000-0015 */
++        int meter_val;
++
++        retval = rgo_one_read_meter(rig, 2, &meter_val);
++
++        if (retval != RIG_OK)
++        {
++            RETURNFUNC(retval);
++        }
++
++        if (rig->caps->swr_cal.size)
++        {
++            val->f = rig_raw2val_float(meter_val, &rig->caps->swr_cal);
++        }
++        else
++        {
++            val->f = (float) meter_val / 2.0f;
++        }
++
++        break;
++    }
++
++    case RIG_LEVEL_COMP_METER:
++    {
++        /* RGO RM: meter 3 = COMP, reading 0000-0015 */
++        int meter_val;
++
++        retval = rgo_one_read_meter(rig, 3, &meter_val);
++
++        if (retval != RIG_OK)
++        {
++            RETURNFUNC(retval);
++        }
++
++        val->f = (float) meter_val;
++        break;
++    }
++
++    case RIG_LEVEL_ALC:
++    {
++        /* RGO RM: meter 1 = ALC, reading 0000-0015 */
++        int meter_val;
++
++        retval = rgo_one_read_meter(rig, 1, &meter_val);
++
++        if (retval != RIG_OK)
++        {
++            RETURNFUNC(retval);
++        }
++
++        val->f = (float) meter_val / 4.0f;
++        break;
++    }
++
++    case RIG_LEVEL_RFPOWER_METER:
++    {
++        /* RGO SM: P1=0, P2=0000-0015 */
++        int raw_value;
++
++        if (CACHE(rig)->ptt == RIG_PTT_OFF)
++        {
++            val->f = 0;
++            break;
++        }
++
++        retval = kenwood_safe_transaction(rig, "SM0", ackbuf, sizeof(ackbuf), 7);
++
++        if (retval != RIG_OK)
++        {
++            RETURNFUNC(retval);
++        }
++
++        sscanf(ackbuf, "SM0%d", &raw_value);
++
++        val->f = (float) raw_value / 15.0f;
++        break;
++    }
++
++    case RIG_LEVEL_RFPOWER:
++    {
++        /* RGO PC: 000-050 (50W max). kenwood uses kenwood_get_power_minmax()
++         * which is incompatible with RGO's plain "PC;" query. */
++        int raw_value;
++        retval = kenwood_safe_transaction(rig, "PC", ackbuf, sizeof(ackbuf), 5);
++
++        if (retval != RIG_OK)
++        {
++            RETURNFUNC(retval);
++        }
++
++        sscanf(ackbuf + 2, "%d", &raw_value);
++        val->f = (float) raw_value / 50.0f;
++        RETURNFUNC(RIG_OK);
++    }
++
++    case RIG_LEVEL_VOXGAIN:
++    {
++        /* RGO VG: 000-010 (000=VOX off). kenwood uses 0-9 scale. */
++        int raw_value;
++        retval = kenwood_safe_transaction(rig, "VG", ackbuf, sizeof(ackbuf), 5);
++
++        if (retval != RIG_OK)
++        {
++            RETURNFUNC(retval);
++        }
++
++        sscanf(ackbuf + 2, "%d", &raw_value);
++        val->f = (float) raw_value / 10.0f;
++        RETURNFUNC(RIG_OK);
++    }
++
++    case RIG_LEVEL_COMP:
++    {
++        /* RGO PL: PLP1P1P1P2P2P2 - P2 ist Output-Level (Position 5-7). */
++        int raw_value;
++        retval = kenwood_safe_transaction(rig, "PL", ackbuf, sizeof(ackbuf), 8);
++
++        if (retval != RIG_OK)
++        {
++            RETURNFUNC(retval);
++        }
++
++        sscanf(ackbuf + 5, "%3d", &raw_value);
++        val->f = (float) raw_value / 10.0f;
++        RETURNFUNC(RIG_OK);
++    }
++
++    case RIG_LEVEL_BKIN_DLYMS:
++    {
++        /* RGO SD: 0000-1200 ms. kenwood_get_level ist kompatibel, aber wir
++         * ueberschreiben um den kenwood-Pfad mit cap 1000ms zu umgehen. */
++        int raw_value;
++        retval = kenwood_safe_transaction(rig, "SD", ackbuf, sizeof(ackbuf), 6);
++
++        if (retval != RIG_OK)
++        {
++            RETURNFUNC(retval);
++        }
++
++        sscanf(ackbuf + 2, "%d", &raw_value);
++        val->i = raw_value;
++        RETURNFUNC(RIG_OK);
++    }
++
++    default:
++        RETURNFUNC(kenwood_get_level(rig, vfo, level, val));
++    }
++
++    RETURNFUNC(RIG_OK);
++}
++
++/*
++ * rgo_one_post_set_rts  (Windows only)
++ *
++ * Windows usbser.sys does not send SET_CONTROL_LINE_STATE to the device when
++ * only RTS changes -- it only sends the request when DTR is modified, carrying
++ * the current RTS state along as a passenger.  Reading DTR and writing it back
++ * unchanged forces the request and delivers the new RTS state to the firmware.
++ */
++#if defined(WIN32)
++static int rgo_one_post_set_rts(RIG *rig, hamlib_port_t *port, int state)
++{
++    int dtr_state;
++
++    rig_debug(RIG_DEBUG_VERBOSE,
++              "%s: WIN32 usbser.sys workaround: no-op DTR write after RTS=%d\n",
++              __func__, state);
++
++    if (ser_get_dtr(port, &dtr_state) == RIG_OK)
++        ser_set_dtr(port, dtr_state);
++
++    return RIG_OK;
++}
++#endif /* WIN32 */
++
++/*
++ * rgo_one_read_live_mode
++ *
++ * Safety-net helper: reads the rig's active mode with a plain "MD;" query.
++ * The TX/CW/mode-set guards must not use kenwood_get_mode() for this: with
++ * is_emulation set (as in this backend) kenwood_get_mode() returns RIG_OK
++ * *without writing *mode* when called for RIG_VFO_B, which left the guards
++ * reading an uninitialised variable. MD does not depend on the VFO argument
++ * anyway -- it always reports the mode the rig is in right now, which is
++ * what matters before keying. *mode is RIG_MODE_NONE on any failure.
++ */
++static int rgo_one_read_live_mode(RIG *rig, rmode_t *mode)
++{
++    char buf[20];
++    int retval, kmode;
++
++    *mode = RIG_MODE_NONE;
++
++    retval = kenwood_safe_transaction(rig, "MD", buf, sizeof(buf), 3);
++
++    if (retval != RIG_OK)
++    {
++        return retval;
++    }
++
++    kmode = (buf[2] <= '9') ? buf[2] - '0' : buf[2] - 'A' + 10;
++    *mode = kenwood2rmode(kmode, kenwood_caps(rig)->mode_table);
++
++    /* same RTTY->PKT remapping as kenwood_get_mode() applies for emulations */
++    if (*mode == RIG_MODE_RTTY) { *mode = RIG_MODE_PKTLSB; }
++
++    if (*mode == RIG_MODE_RTTYR) { *mode = RIG_MODE_PKTUSB; }
++
++    return RIG_OK;
++}
++
++/*
++ * rgo_one_set_mode
++ *
++ * Safety net: RGO MD is a fire-and-forget set command (no confirmation
++ * in the response). A hardware incident (CW keyed while the rig was
++ * still in SSB, destroying the driver transistor) showed that we cannot
++ * assume a mode-set command actually took effect just because the
++ * transaction returned RIG_OK -- the firmware itself does not guarantee
++ * this either. Read the mode back immediately and fail loudly on
++ * mismatch instead of letting the caller believe a mode change happened
++ * that didn't.
++ */
++static int rgo_one_set_mode(RIG *rig, vfo_t vfo, rmode_t mode, pbwidth_t width)
++{
++    int retval;
++    rmode_t confirmed_mode = RIG_MODE_NONE;
++
++    ENTERFUNC;
++
++    retval = kenwood_set_mode(rig, vfo, mode, width);
++
++    if (retval != RIG_OK)
++    {
++        RETURNFUNC(retval);
++    }
++
++    retval = rgo_one_read_live_mode(rig, &confirmed_mode);
++
++    if (retval != RIG_OK)
++    {
++        rig_debug(RIG_DEBUG_ERR,
++                  "%s: mode set to %s but could not verify by readback: %s\n",
++                  __func__, rig_strrmode(mode), rigerror(retval));
++        RETURNFUNC(retval);
++    }
++
++    if (confirmed_mode != mode)
++    {
++        rig_debug(RIG_DEBUG_ERR,
++                  "%s: mode verification failed -- requested %s, rig reports %s\n",
++                  __func__, rig_strrmode(mode), rig_strrmode(confirmed_mode));
++        RETURNFUNC(-RIG_EPROTO);
++    }
++
++    RETURNFUNC(RIG_OK);
++}
++
++/*
++ * rgo_one_set_ptt
++ *
++ * kenwood_set_ptt sends bare "TX;" for RIG_PTT_ON, but the RGO ONE
++ * requires a P1 parameter. TX; without P1 is not accepted by the rig.
++ * Documented TX modes: TX0 (normal/mic), TX2 (tune). TX1 is not in the
++ * CAT manual -- RIG_PTT_ON_DATA is mapped to TX0 for maximum compatibility
++ * with logging and digital mode software (WSJT-X, fldigi, etc.).
++ *
++ * Safety net: the firmware does not reliably guard against keying in an
++ * unexpected mode (see rgo_one_set_mode comment above -- this is what
++ * destroyed a driver transistor). We cannot know the caller's *intended*
++ * mode here (the Hamlib PTT API carries no mode parameter), but we can
++ * at least refuse to key if the CAT link cannot confirm a sane, known
++ * mode right now. Callers (e.g. test scripts) are still responsible for
++ * verifying the *correct* mode via rig_get_mode() before every TX.
++ */
++static int rgo_one_set_ptt(RIG *rig, vfo_t vfo, ptt_t ptt)
++{
++    const char *cmd;
++    int retval;
++
++    ENTERFUNC;
++
++    switch (ptt)
++    {
++    case RIG_PTT_ON:
++    case RIG_PTT_ON_MIC:
++    case RIG_PTT_ON_DATA:
++    {
++        rmode_t cur_mode = RIG_MODE_NONE;
++
++        retval = rgo_one_read_live_mode(rig, &cur_mode);
++
++        if (retval != RIG_OK)
++        {
++            rig_debug(RIG_DEBUG_ERR,
++                      "%s: refusing TX -- could not read current mode: %s\n",
++                      __func__, rigerror(retval));
++            RETURNFUNC(retval);
++        }
++
++        if (cur_mode == RIG_MODE_NONE)
++        {
++            rig_debug(RIG_DEBUG_ERR,
++                      "%s: refusing TX -- rig reports no valid mode\n", __func__);
++            RETURNFUNC(-RIG_EPROTO);
++        }
++
++        cmd = "TX0";
++        break;
++    }
++
++    case RIG_PTT_OFF:
++        cmd = "RX";
++        break;
++
++    default:
++        RETURNFUNC(-RIG_EINVAL);
++    }
++
++    retval = kenwood_transaction(rig, cmd, NULL, 0);
++
++    if (ptt == RIG_PTT_OFF) { hl_usleep(100 * 1000); }
++
++    RETURNFUNC(retval);
++}
++
++/*
++ * rgo_one_send_morse
++ *
++ * Safety net: kenwood_send_morse() sends raw "KY" commands directly,
++ * bypassing rig_set_ptt()/rgo_one_set_ptt() entirely -- none of the pre-TX
++ * mode checks there apply to this path. Upstream rig_send_morse() (src/rig.c)
++ * already refuses non-CW/CWR modes, but via rig_get_mode(), which may serve
++ * a cached value up to 500ms old instead of a live read. Re-verify live,
++ * immediately before keying -- CW must never be keyed unless the rig is
++ * confirmed, right now, to be in CW or CWR.
++ */
++static int rgo_one_send_morse(RIG *rig, vfo_t vfo, const char *msg)
++{
++    rmode_t cur_mode = RIG_MODE_NONE;
++    int retval;
++
++    ENTERFUNC;
++
++    retval = rgo_one_read_live_mode(rig, &cur_mode);
++
++    if (retval != RIG_OK)
++    {
++        rig_debug(RIG_DEBUG_ERR,
++                  "%s: refusing CW keying -- could not read current mode: %s\n",
++                  __func__, rigerror(retval));
++        RETURNFUNC(retval);
++    }
++
++    if ((cur_mode & (RIG_MODE_CW | RIG_MODE_CWR)) == 0)
++    {
++        rig_debug(RIG_DEBUG_ERR,
++                  "%s: refusing CW keying -- rig is in %s, not CW/CWR\n",
++                  __func__, rig_strrmode(cur_mode));
++        RETURNFUNC(-RIG_EINVAL);
++    }
++
++    RETURNFUNC(kenwood_send_morse(rig, vfo, msg));
++}
++
++/*
++ * rgo_one_send_voice_mem / rgo_one_stop_voice_mem
++ *
++ * RGO PB command: plays back stored CW/SSB memory messages (channels 1-4).
++ * Not previously wired to the Hamlib API at all -- only reachable via raw
++ * CAT, with zero protection (not even the weak cache-based check
++ * rig_send_morse() has for live CW keying).
++ *
++ * The CAT manual documents PB as playing "CW/SSB memory messages" from the
++ * same four channels -- there is no way via CAT to know which type of
++ * content is stored in a given channel. Given that keying CW in the wrong
++ * mode is exactly what destroyed a driver transistor in the field, this
++ * errs conservatively: playback is only permitted while the rig is
++ * confirmed, live, to be in CW or CWR. A legitimate SSB memory message
++ * stored on a channel would also be blocked by this -- an inconvenience,
++ * not a hazard; the reverse (an unverified CW message played back in the
++ * wrong mode) would not be.
++ */
++static int rgo_one_send_voice_mem(RIG *rig, vfo_t vfo, int ch)
++{
++    char buf[8];
++    rmode_t cur_mode = RIG_MODE_NONE;
++    int retval;
++
++    ENTERFUNC;
++
++    if (ch < 1 || ch > 4)
++    {
++        RETURNFUNC(-RIG_EINVAL);
++    }
++
++    retval = rgo_one_read_live_mode(rig, &cur_mode);
++
++    if (retval != RIG_OK)
++    {
++        rig_debug(RIG_DEBUG_ERR,
++                  "%s: refusing memory message playback -- could not read current mode: %s\n",
++                  __func__, rigerror(retval));
++        RETURNFUNC(retval);
++    }
++
++    if ((cur_mode & (RIG_MODE_CW | RIG_MODE_CWR)) == 0)
++    {
++        rig_debug(RIG_DEBUG_ERR,
++                  "%s: refusing memory message playback -- rig is in %s, not CW/CWR "
++                  "(channel content type cannot be verified via CAT)\n",
++                  __func__, rig_strrmode(cur_mode));
++        RETURNFUNC(-RIG_EINVAL);
++    }
++
++    SNPRINTF(buf, sizeof(buf), "PB%d", ch);
++    RETURNFUNC(kenwood_transaction(rig, buf, NULL, 0));
++}
++
++static int rgo_one_stop_voice_mem(RIG *rig, vfo_t vfo)
++{
++    ENTERFUNC;
++
++    /* Stop is always safe to allow unconditionally -- it can only reduce
++     * TX activity, never trigger it. */
++    RETURNFUNC(kenwood_transaction(rig, "PB0", NULL, 0));
++}
++
++/*
++ * rgo_one_vfo_op
++ *
++ * RIG_OP_TUNE: RGO uses "TX2;" to activate the built-in antenna tuner
++ * (transmit in tune mode). kenwood_vfo_op would send "AC111;" which is
++ * wrong for this rig. All other ops delegate to kenwood_vfo_op.
++ */
++static int rgo_one_vfo_op(RIG *rig, vfo_t vfo, vfo_op_t op)
++{
++    ENTERFUNC;
++
++    if (op == RIG_OP_TUNE)
++    {
++        RETURNFUNC(kenwood_transaction(rig, "TX2", NULL, 0));
++    }
++
++    RETURNFUNC(kenwood_vfo_op(rig, vfo, op));
++}
++
++/*
++ * rgo_one_set_rit
++ *
++ * RGO RIT/XIT offset setting, limited to +/-5 kHz
++ * Uses RC (clear), RU (up), RD (down) commands.
++ * RGO manual: RU/RD P1 = 00000-00500 with 10Hz steps (0-5kHz)
++ */
++static int rgo_one_set_rit(RIG *rig, vfo_t vfo, shortfreq_t rit)
++{
++    char buf[20];
++    int retval;
++    int rit_enabled;
++    int xit_enabled;
++
++    ENTERFUNC;
++
++    if (rit < -5000 || rit > 5000)
++    {
++        RETURNFUNC(-RIG_EINVAL);
++    }
++
++    /* RC clear command cannot be executed if RIT/XIT is not enabled */
++
++    retval = kenwood_get_func(rig, vfo, RIG_FUNC_RIT, &rit_enabled);
++
++    if (retval != RIG_OK)
++    {
++        RETURNFUNC(retval);
++    }
++
++    if (!rit_enabled)
++    {
++        retval = kenwood_get_func(rig, vfo, RIG_FUNC_XIT, &xit_enabled);
++
++        if (retval != RIG_OK)
++        {
++            RETURNFUNC(retval);
++        }
++    }
++
++    if (!rit_enabled && !xit_enabled)
++    {
++        retval = kenwood_set_func(rig, vfo, RIG_FUNC_RIT, 1);
++
++        if (retval != RIG_OK)
++        {
++            RETURNFUNC(retval);
++        }
++    }
++
++    retval = kenwood_transaction(rig, "RC", NULL, 0);
++
++    if (retval != RIG_OK)
++    {
++        RETURNFUNC(retval);
++    }
++
++    if (!rit_enabled && !xit_enabled)
++    {
++        retval = kenwood_set_func(rig, vfo, RIG_FUNC_RIT, 0);
++
++        if (retval != RIG_OK)
++        {
++            RETURNFUNC(retval);
++        }
++    }
++
++    if (rit == 0)
++    {
++        RETURNFUNC(RIG_OK);
++    }
++
++    SNPRINTF(buf, sizeof(buf), "R%c%05d", (rit > 0) ? 'U' : 'D',
++             abs((int) rit) / 10);  /* RU/RD P1 in 10 Hz steps */
++    retval = kenwood_transaction(rig, buf, NULL, 0);
++
++    RETURNFUNC(retval);
++}
++
++/*
++ * rgo_one_get_rit
++ *
++ * Read RIT/XIT offset from IF command response (TS-480 compatible format).
++ */
++static int rgo_one_get_rit(RIG *rig, vfo_t vfo, shortfreq_t *rit)
++{
++    int retval;
++    char buf[7];
++    struct kenwood_priv_data *priv = STATE(rig)->priv;
++
++    ENTERFUNC;
++
++    if (!rit)
++    {
++        RETURNFUNC(-RIG_EINVAL);
++    }
++
++    retval = kenwood_get_if(rig);
++
++    if (retval != RIG_OK)
++    {
++        RETURNFUNC(retval);
++    }
++
++    memcpy(buf, &priv->info[18], 5);
++
++    buf[6] = '\0';
++    *rit = atoi(buf);
++
++    RETURNFUNC(RIG_OK);
++}
++
++/*
++ * rgo_one_get_info
++ *
++ * FW 1.08+: ID; returns "ID006" (model only), FW; returns firmware version,
++ *           SN; returns µC serial numbers.
++ * Old FW:   ID; returns "ID006 <fw> <sn1> <sn2>" -- FW;/SN; not available.
++ */
++static const char *rgo_one_get_info(RIG *rig)
++{
++    static char infobuf[128];
++    char idbuf[16];
++    char fwbuf[16];
++    char snbuf[64];
++    char fw_str[16] = "";
++    char sn_str[64] = "";
++    int fw_major, fw_minor;
++    int retval;
++
++    retval = kenwood_transaction(rig, "ID", idbuf, sizeof(idbuf));
++
++    if (retval != RIG_OK || strlen(idbuf) < 5 || strncmp(idbuf + 2, "006", 3) != 0)
++    {
++        return "RGO ONE V6";
++    }
++
++    /* FW: "FW0108" (FW 1.08+); silently ignored on old firmware */
++    retval = kenwood_transaction(rig, "FW", fwbuf, sizeof(fwbuf));
++
++    if (retval == RIG_OK && strlen(fwbuf) == 6 && strncmp(fwbuf, "FW", 2) == 0
++        && sscanf(fwbuf + 2, "%2d%2d", &fw_major, &fw_minor) == 2)
++    {
++        SNPRINTF(fw_str, sizeof(fw_str), " FW%d.%02d", fw_major, fw_minor);
++    }
++
++    /* SN: "SN 20303656 32435013 005D0069" (FW 1.08+); silently ignored on old firmware */
++    retval = kenwood_transaction(rig, "SN", snbuf, sizeof(snbuf));
++
++    if (retval == RIG_OK && strlen(snbuf) > 2 && strncmp(snbuf, "SN", 2) == 0)
++    {
++        const char *sn_data = snbuf + 2;
++        while (*sn_data == ' ') { sn_data++; }
++        SNPRINTF(sn_str, sizeof(sn_str), " SN:%s", sn_data);
++    }
++
++    SNPRINTF(infobuf, sizeof(infobuf), "RGO ONE V6 ID006%s%s", fw_str, sn_str);
++    return infobuf;
++}
++
++/*
++ * rgo_one_set_mem
++ *
++ * MC command: recall memory channel 00-99.
++ * Activates the stored frequency/mode from the given memory slot.
++ */
++static int rgo_one_set_mem(RIG *rig, vfo_t vfo, int ch)
++{
++    char buf[10];
++
++    ENTERFUNC;
++
++    if (ch < 0 || ch > 99)
++    {
++        RETURNFUNC(-RIG_EINVAL);
++    }
++
++    SNPRINTF(buf, sizeof(buf), "MC0%02d", ch);
++    RETURNFUNC(kenwood_transaction(rig, buf, NULL, 0));
++}
++
++/*
++ * rgo_one_get_mem
++ *
++ * MC query: returns current memory channel (000-099).
++ */
++static int rgo_one_get_mem(RIG *rig, vfo_t vfo, int *ch)
++{
++    char ackbuf[16];
++    int retval;
++    int channel;
++
++    ENTERFUNC;
++
++    retval = kenwood_safe_transaction(rig, "MC", ackbuf, sizeof(ackbuf), 5);
++
++    if (retval != RIG_OK)
++    {
++        RETURNFUNC(retval);
++    }
++
++    if (sscanf(ackbuf, "MC%d", &channel) != 1)
++    {
++        RETURNFUNC(-RIG_EPROTO);
++    }
++
++    *ch = channel;
++    RETURNFUNC(RIG_OK);
++}
++
++/*
++ * RGO MR/MW memory channel format (CAT manual v1.03):
++ *
++ *   MR[P1][P2][CH][FREQ][MODE][STEP][NB][PRE][ATT][AGC][FIL]
++ *
++ *   P1   1 char   0=RX slot  1=TX slot (split)
++ *   P2   1 char   always 0
++ *   CH   2 chars  channel number 00-99
++ *   FREQ 11 chars frequency in Hz
++ *   MODE 1 char   1=LSB 2=USB 3=CW 4=FM 5=AM 6=Digi 7=CW-R
++ *   STEP 1 char   0=1Hz 1=10Hz 2=100Hz 3=1kHz
++ *   NB   1 char   0/1
++ *   PRE  1 char   0/1
++ *   ATT  1 char   0/1
++ *   AGC  1 char   2=fast 3=slow
++ *   FIL  1 char   0/1
++ *
++ *   Total response: 24 chars (without ';').
++ *   Empty channel: FREQ field is all zeros -> -RIG_ENAVAIL.
++ *   MW has no response (write-only).
++ *   Split: TX slot (P1=1) freq != 0 and != RX freq -> RIG_SPLIT_ON.
++ */
++
++static rmode_t rgo_digit_to_mode(int d)
++{
++    switch (d)
++    {
++    case 1: return RIG_MODE_LSB;
++    case 2: return RIG_MODE_USB;
++    case 3: return RIG_MODE_CW;
++    case 4: return RIG_MODE_FM;
++    case 5: return RIG_MODE_AM;
++    case 6: return RIG_MODE_RTTY;
++    case 7: return RIG_MODE_CWR;
++    default: return RIG_MODE_NONE;
++    }
++}
++
++static int rgo_mode_to_digit(rmode_t mode)
++{
++    switch (mode)
++    {
++    case RIG_MODE_LSB:              return 1;
++    case RIG_MODE_USB:              return 2;
++    case RIG_MODE_CW:               return 3;
++    case RIG_MODE_FM:               return 4;
++    case RIG_MODE_AM:               return 5;
++    case RIG_MODE_RTTY:
++    case RIG_MODE_PKTUSB:
++    case RIG_MODE_PKTLSB:           return 6;
++    case RIG_MODE_CWR:              return 7;
++    default:                        return 2;   /* default USB */
++    }
++}
++
++/*
++ * rgo_one_read_mr_slot
++ *
++ * Reads frequency and mode digit of one memory slot (MR P1=slot) for the
++ * write verification in set_channel/delete_channel.
++ * Empty channel: FW >= 1.09 does not answer (timeout), older FW answers with
++ * frequency 0.  Both are reported as *freq = 0.
++ */
++static int rgo_one_read_mr_slot(RIG *rig, int slot, int ch, freq_t *freq,
++                                int *mode_digit)
++{
++    char cmd[16];
++    char buf[32];
++    char fstr[12];
++    int retval;
++
++    SNPRINTF(cmd, sizeof(cmd), "MR%d0%02d", slot, ch);
++    retval = kenwood_safe_transaction(rig, cmd, buf, sizeof(buf), 24);
++
++    if (retval == -RIG_ETIMEOUT)
++    {
++        *freq = 0;
++        *mode_digit = 0;
++        return RIG_OK;
++    }
++
++    if (retval != RIG_OK)
++        return retval;
++
++    if (strncmp(buf, cmd, 6) != 0)
++    {
++        rig_debug(RIG_DEBUG_ERR, "%s: unexpected answer '%s' to '%s'\n",
++                  __func__, buf, cmd);
++        return -RIG_EPROTO;
++    }
++
++    memcpy(fstr, buf + 6, 11);
++    fstr[11] = '\0';
++    *freq = (freq_t) atoll(fstr);
++    *mode_digit = buf[17] - '0';
++
++    return RIG_OK;
++}
++
++/*
++ * rgo_one_get_channel
++ *
++ * Reads memory channel data via MR command (P1=0 for RX slot, P1=1 for TX slot).
++ * FW < 1.09:  empty channel returns 24-char all-zero response -> freq=0 -> -RIG_ENAVAIL.
++ * FW >= 1.09: empty channel returns no response -> kenwood_safe_transaction times out.
++ * Split detected when TX freq != 0 and TX freq != RX freq.
++ * If read_only=0: additionally recalls the channel via MC (activates it on rig).
++ */
++static int rgo_one_get_channel(RIG *rig, vfo_t vfo, channel_t *chan,
++                                int read_only)
++{
++    char cmd[16];
++    char buf[32];
++    char fstr[12];
++    int retval, ch;
++    freq_t rx_freq, tx_freq;
++
++    ENTERFUNC;
++
++    if (!chan)
++        RETURNFUNC(-RIG_EINVAL);
++
++    ch = chan->channel_num;
++
++    if (ch < 0 || ch > 99)
++        RETURNFUNC(-RIG_EINVAL);
++
++    /* Read RX slot: MR00CH */
++    SNPRINTF(cmd, sizeof(cmd), "MR00%02d", ch);
++    retval = kenwood_safe_transaction(rig, cmd, buf, sizeof(buf), 24);
++
++    if (retval != RIG_OK)
++        RETURNFUNC(retval);
++
++    /* Empty channel: all-zero frequency field */
++    memcpy(fstr, buf + 6, 11);
++    fstr[11] = '\0';
++    rx_freq = (freq_t) atoll(fstr);
++
++    if (rx_freq == 0)
++        RETURNFUNC(-RIG_ENAVAIL);
++
++    memset(chan, 0, sizeof(channel_t));
++    chan->channel_num = ch;
++    chan->vfo         = RIG_VFO_VFO;
++    chan->freq        = rx_freq;
++    chan->mode        = rgo_digit_to_mode(buf[17] - '0');
++    chan->width       = rig_passband_normal(rig, chan->mode);
++
++    switch (buf[18] - '0')
++    {
++    case 1: chan->tuning_step = 10;   break;
++    case 2: chan->tuning_step = 100;  break;
++    case 3: chan->tuning_step = 1000; break;
++    default: chan->tuning_step = 1;
++    }
++
++    if (buf[19] == '1')
++        chan->funcs |= RIG_FUNC_NB;
++
++    chan->levels[rig_setting2idx(RIG_LEVEL_PREAMP)].i = (buf[20] == '1') ? 1 : 0;
++    chan->levels[rig_setting2idx(RIG_LEVEL_ATT)].i    = (buf[21] == '1') ? 1 : 0;
++    chan->levels[rig_setting2idx(RIG_LEVEL_AGC)].i    =
++        (buf[22] == '3') ? RIG_AGC_SLOW : RIG_AGC_FAST;
++
++    /* Read TX slot: MR10CH (reuse cmd, flip P1 digit) */
++    cmd[2] = '1';
++    retval = kenwood_safe_transaction(rig, cmd, buf, sizeof(buf), 24);
++
++    if (retval != RIG_OK)
++        RETURNFUNC(retval);
++
++    memcpy(fstr, buf + 6, 11);
++    tx_freq = (freq_t) atoll(fstr);
++
++    if (tx_freq != 0 && tx_freq != rx_freq)
++    {
++        chan->tx_freq  = tx_freq;
++        chan->tx_mode  = rgo_digit_to_mode(buf[17] - '0');
++        chan->tx_width = rig_passband_normal(rig, chan->tx_mode);
++        chan->split    = RIG_SPLIT_ON;
++    }
++    else
++    {
++        chan->tx_freq  = RIG_FREQ_NONE;
++        chan->tx_mode  = RIG_MODE_NONE;
++        chan->split    = RIG_SPLIT_OFF;
++    }
++
++    /* read_only=0: activate channel on rig */
++    if (!read_only)
++    {
++        char mc[10];
++        SNPRINTF(mc, sizeof(mc), "MC0%02d", ch);
++        retval = kenwood_transaction(rig, mc, NULL, 0);
++
++        if (retval != RIG_OK)
++            RETURNFUNC(retval);
++    }
++
++    RETURNFUNC(RIG_OK);
++}
++
++/*
++ * rgo_one_set_channel
++ *
++ * Writes memory channel data via MW command.
++ * Always writes both RX slot (P1=0) and TX slot (P1=1).
++ * For non-split: TX slot freq = RX freq.  Writing TX freq=0 causes the
++ * firmware to delete the channel entirely (observed behaviour).
++ * MW has no response from the rig.  FW 1.10 (CAT manual 1.04) silently
++ * ignores MW while the rig is in memory mode, so each slot is read back via
++ * MR and a mismatch of frequency or mode is reported as -RIG_ERJCTED.
++ */
++static int rgo_one_set_channel(RIG *rig, vfo_t vfo, const channel_t *chan)
++{
++    char buf[64];
++    int ch, rx_mode, tx_mode, agc, tx_agc, step, retval, rb_mode;
++    freq_t tx_freq, rb_freq;
++
++    ENTERFUNC;
++
++    if (!chan)
++        RETURNFUNC(-RIG_EINVAL);
++
++    ch = chan->channel_num;
++
++    if (ch < 0 || ch > 99)
++        RETURNFUNC(-RIG_EINVAL);
++
++    rx_mode = rgo_mode_to_digit(chan->mode);
++
++    /* AGC: P10 = 2(fast) or 3(slow) */
++    agc = (chan->levels[rig_setting2idx(RIG_LEVEL_AGC)].i == RIG_AGC_SLOW) ? 3 : 2;
++
++    /* Tuning step: map Hz -> P6 digit */
++    if      (chan->tuning_step >= 1000) step = 3;
++    else if (chan->tuning_step >= 100)  step = 2;
++    else if (chan->tuning_step >= 10)   step = 1;
++    else                                step = 0;
++
++    /* MW P1=0: RX slot */
++    SNPRINTF(buf, sizeof(buf), "MW00%02d%011lld%d%d%d%d%d%d%d",
++             ch,
++             (long long) chan->freq,
++             rx_mode,
++             step,
++             (chan->funcs & RIG_FUNC_NB)                          ? 1 : 0,
++             chan->levels[rig_setting2idx(RIG_LEVEL_PREAMP)].i    ? 1 : 0,
++             chan->levels[rig_setting2idx(RIG_LEVEL_ATT)].i       ? 1 : 0,
++             agc,
++             0);    /* FIL: not stored in channel_t */
++
++    retval = kenwood_transaction(rig, buf, NULL, 0);
++
++    if (retval != RIG_OK)
++        RETURNFUNC(retval);
++
++    retval = rgo_one_read_mr_slot(rig, 0, ch, &rb_freq, &rb_mode);
++
++    if (retval != RIG_OK)
++        RETURNFUNC(retval);
++
++    if ((long long) rb_freq != (long long) chan->freq || rb_mode != rx_mode)
++    {
++        rig_debug(RIG_DEBUG_ERR, "%s: channel %d RX slot not written "
++                  "(read back %.0f Hz mode %d) - rig in memory mode?\n",
++                  __func__, ch, rb_freq, rb_mode);
++        RETURNFUNC(-RIG_ERJCTED);
++    }
++
++    /* MW P1=1: TX slot */
++    if (chan->split == RIG_SPLIT_ON && chan->tx_freq > 0)
++    {
++        tx_freq = chan->tx_freq;
++        tx_mode = rgo_mode_to_digit(chan->tx_mode != RIG_MODE_NONE
++                                    ? chan->tx_mode : chan->mode);
++        tx_agc  = agc;
++    }
++    else
++    {
++        /* Not split: TX slot mirrors RX freq.  Writing TX freq=0 would
++         * cause the firmware to delete the channel (observed). */
++        tx_freq = chan->freq;
++        tx_mode = rx_mode;
++        tx_agc  = agc;
++    }
++
++    SNPRINTF(buf, sizeof(buf), "MW10%02d%011lld%d%d%d%d%d%d%d",
++             ch,
++             (long long) tx_freq,
++             tx_mode,
++             step,
++             0, 0, 0,   /* NB, PRE, ATT */
++             tx_agc,
++             0);        /* FIL */
++
++    retval = kenwood_transaction(rig, buf, NULL, 0);
++
++    if (retval != RIG_OK)
++        RETURNFUNC(retval);
++
++    retval = rgo_one_read_mr_slot(rig, 1, ch, &rb_freq, &rb_mode);
++
++    if (retval != RIG_OK)
++        RETURNFUNC(retval);
++
++    if ((long long) rb_freq != (long long) tx_freq || rb_mode != tx_mode)
++    {
++        rig_debug(RIG_DEBUG_ERR, "%s: channel %d TX slot not written "
++                  "(read back %.0f Hz mode %d)\n",
++                  __func__, ch, rb_freq, rb_mode);
++        RETURNFUNC(-RIG_ERJCTED);
++    }
++
++    RETURNFUNC(RIG_OK);
++}
++
++/*
++ * rgo_one_delete_channel
++ *
++ * Deletes a memory channel by writing MW P1=0 with FREQ=0.
++ * Firmware >= 1.09: P1=0 + FREQ=0 is the explicit delete command.
++ * Firmware < 1.09:  P1=0 + FREQ=0 also cleared the channel (same effect).
++ * FW 1.10 ignores MW in memory mode without answer, so the RX slot is read
++ * back: still a frequency there -> -RIG_ERJCTED.
++ */
++static int rgo_one_delete_channel(RIG *rig, vfo_t vfo, const channel_t *chan)
++{
++    char buf[32];
++    int ch, retval, rb_mode;
++    freq_t rb_freq;
++
++    ENTERFUNC;
++
++    if (!chan)
++        RETURNFUNC(-RIG_EINVAL);
++
++    ch = chan->channel_num;
++
++    if (ch < 0 || ch > 99)
++        RETURNFUNC(-RIG_EINVAL);
++
++    SNPRINTF(buf, sizeof(buf), "MW00%02d%011d0000000", ch, 0);
++    retval = kenwood_transaction(rig, buf, NULL, 0);
++
++    if (retval != RIG_OK)
++        RETURNFUNC(retval);
++
++    retval = rgo_one_read_mr_slot(rig, 0, ch, &rb_freq, &rb_mode);
++
++    if (retval != RIG_OK)
++        RETURNFUNC(retval);
++
++    if (rb_freq != 0)
++    {
++        rig_debug(RIG_DEBUG_ERR, "%s: channel %d not deleted "
++                  "(still %.0f Hz) - rig in memory mode?\n",
++                  __func__, ch, rb_freq);
++        RETURNFUNC(-RIG_ERJCTED);
++    }
++
++    RETURNFUNC(RIG_OK);
++}
++
++static struct kenwood_priv_caps rgo_one_priv_caps =
++{
++    .cmdtrm = EOM_KEN,
++};
++
++/*
++ * rgo_one_init
++ *
++ * RGO-specific initialization:
++ *   ag_format = 2 (AG0xxx format for AF gain, undocumented but likely TS-480 compat)
++ *   micgain_min/max = 0/10 (RGO MG: 000-010, NOT 000-100 like TS-480!)
++ */
++static int rgo_one_init(RIG *rig)
++{
++    struct kenwood_priv_data *priv;
++    int retval;
++
++    ENTERFUNC;
++
++    retval = kenwood_init(rig);
++
++    if (retval != RIG_OK)
++    {
++        RETURNFUNC(retval);
++    }
++
++    priv = (struct kenwood_priv_data *) STATE(rig)->priv;
++
++    priv->ag_format = 2;
++    priv->micgain_min = 0;
++    priv->micgain_max = 10;
++
++    RETURNFUNC(RIG_OK);
++}
++
++/*
++ * rgo_one_open
++ *
++ * Open connection and verify RGO ONE identity.
++ * FW 1.08+: ID; returns "ID006" (model only, short format).
++ * Old FW:   ID; returns "ID006 <fw> <sn1> <sn2>" (long format).
++ *           Warning is logged; connection proceeds normally since most CAT
++ *           commands work on old firmware. FW;/SN; will silently fail.
++ */
++static int rgo_one_open(RIG *rig)
++{
++    int retval;
++    char idbuf[64];
++    struct kenwood_priv_data *priv = (struct kenwood_priv_data *) STATE(rig)->priv;
++
++    ENTERFUNC;
++
++    retval = kenwood_open(rig);
++
++    if (retval != RIG_OK)
++    {
++        RETURNFUNC(retval);
++    }
++
++    retval = kenwood_transaction(rig, "ID", idbuf, sizeof(idbuf));
++
++    if (retval != RIG_OK)
++    {
++        rig_debug(RIG_DEBUG_WARN, "%s: could not read ID, assuming RGO ONE V6\n",
++                  __func__);
++    }
++    else if (strlen(idbuf) < 5 || strncmp(idbuf + 2, "006", 3) != 0)
++    {
++        rig_debug(RIG_DEBUG_WARN,
++                  "%s: unexpected ID '%s' (expected ID006 for RGO ONE V6)\n",
++                  __func__, idbuf);
++    }
++    else if (strchr(idbuf + 5, ' ') != NULL || strlen(idbuf) > 5)
++    {
++        /* Old firmware (< 1.08): ID returns long format "ID006 <fw> <sn> ..." */
++        rig_debug(RIG_DEBUG_WARN,
++                  "%s: RGO ONE V6 old firmware detected (%s)\n"
++                  "   FW 1.08+ recommended -- FW; SN; MC; not available.\n"
++                  "   Most CAT commands work normally. Please consider a firmware update.\n",
++                  __func__, idbuf);
++    }
++    else
++    {
++        rig_debug(RIG_DEBUG_VERBOSE, "%s: RGO ONE V6 identified: %s\n",
++                  __func__, idbuf);
++    }
++
++    priv->is_emulation = 1;
++
++    RETURNFUNC(RIG_OK);
++}
++
++/*
++ * RGO ONE rig capabilities
++ *
++ * All parameters verified against RGO_ONE_V6_CAT_Manual1.01.pdf
++ */
++struct rig_caps rgo_one_caps =
++{
++    RIG_MODEL(RIG_MODEL_RGOONE_V6),
++    .model_name = "RGO ONE V6",
++    .mfg_name = "LZ2JR",
++    .version = "20261007.0",
++    .copyright = "LGPL",
++    .status = RIG_STATUS_BETA,
++    .rig_type = RIG_TYPE_TRANSCEIVER,
++    .ptt_type = RIG_PTT_RIG,
++    .dcd_type = RIG_DCD_NONE,  /* BY command not in RGO CAT manual */
++    .port_type = RIG_PORT_SERIAL,
++    .serial_rate_min = 9600,
++    .serial_rate_max = 57600,
++    .serial_data_bits = 8,
++    .serial_stop_bits = 1,
++    .serial_parity = RIG_PARITY_NONE,
++    .serial_handshake = RIG_HANDSHAKE_NONE,
++    .write_delay = 0,
++    .post_write_delay = 0,
++    .timeout = 500,
++    .retry = 3,
++    .preamp = {1, RIG_DBLST_END,},
++    .attenuator = {1, RIG_DBLST_END,},
++    .max_rit = kHz(5.0),
++    .max_xit = kHz(5.0),
++    .max_ifshift = Hz(0),
++    .chan_list = {
++        {  0, 99, RIG_MTYPE_MEM, { .freq = 1, .mode = 1 } },
++        RIG_CHAN_END,
++    },
++    .targetable_vfo = RIG_TARGETABLE_FREQ,
++    .transceive = RIG_TRN_RIG,
++    .agc_level_count = 3,
++    .agc_levels = { RIG_AGC_OFF, RIG_AGC_FAST, RIG_AGC_SLOW },
++
++    /* Absolute RX limits per FW 1.10 release notes (September 2026):
++     * "RGO ONE V6 absolute frequency limits are now corrected and are:
++     *  1.5MHz < f <= 30MHz". Was 1.8-29.7 MHz on older firmware. TX band
++     * segments below are amateur band plan limits, independent of this and
++     * unaffected by the FW 1.10 change. */
++    .rx_range_list1 = {
++        {kHz(1500), kHz(30000), RGOONE_ALL_MODES, -1, -1, RGOONE_VFO},
++        RIG_FRNG_END,
++    },
++    .tx_range_list1 = {
++        {kHz(1800),  kHz(2000),  RGOONE_OTHER_TX_MODES, 5000, 50000, RGOONE_VFO},
++        {kHz(1800),  kHz(2000),  RGOONE_AM_TX_MODES, 5000, 12500, RGOONE_VFO},
++        {kHz(3500),  kHz(4000),  RGOONE_OTHER_TX_MODES, 5000, 50000, RGOONE_VFO},
++        {kHz(3500),  kHz(4000),  RGOONE_AM_TX_MODES, 5000, 12500, RGOONE_VFO},
++        {kHz(7000),  kHz(7300),  RGOONE_OTHER_TX_MODES, 5000, 50000, RGOONE_VFO},
++        {kHz(7000),  kHz(7300),  RGOONE_AM_TX_MODES, 5000, 12500, RGOONE_VFO},
++        {kHz(10100), kHz(10150), RGOONE_OTHER_TX_MODES, 5000, 50000, RGOONE_VFO},
++        {kHz(10100), kHz(10150), RGOONE_AM_TX_MODES, 5000, 12500, RGOONE_VFO},
++        {kHz(14000), kHz(14350), RGOONE_OTHER_TX_MODES, 5000, 50000, RGOONE_VFO},
++        {kHz(14000), kHz(14350), RGOONE_AM_TX_MODES, 5000, 12500, RGOONE_VFO},
++        {kHz(18068), kHz(18168), RGOONE_OTHER_TX_MODES, 5000, 50000, RGOONE_VFO},
++        {kHz(18068), kHz(18168), RGOONE_AM_TX_MODES, 5000, 12500, RGOONE_VFO},
++        {kHz(21000), kHz(21450), RGOONE_OTHER_TX_MODES, 5000, 50000, RGOONE_VFO},
++        {kHz(21000), kHz(21450), RGOONE_AM_TX_MODES, 5000, 12500, RGOONE_VFO},
++        {kHz(24890), kHz(24990), RGOONE_OTHER_TX_MODES, 5000, 50000, RGOONE_VFO},
++        {kHz(24890), kHz(24990), RGOONE_AM_TX_MODES, 5000, 12500, RGOONE_VFO},
++        {kHz(28000), kHz(29700), RGOONE_OTHER_TX_MODES, 5000, 50000, RGOONE_VFO},
++        {kHz(28000), kHz(29700), RGOONE_AM_TX_MODES, 5000, 12500, RGOONE_VFO},
++        RIG_FRNG_END,
++    },
++    .rx_range_list2 = {
++        {kHz(1500), kHz(30000), RGOONE_ALL_MODES, -1, -1, RGOONE_VFO},
++        RIG_FRNG_END,
++    },
++    .tx_range_list2 = {
++        {kHz(1800),  kHz(2000),  RGOONE_OTHER_TX_MODES, 5000, 50000, RGOONE_VFO},
++        {kHz(1800),  kHz(2000),  RGOONE_AM_TX_MODES, 5000, 12500, RGOONE_VFO},
++        {kHz(3500),  kHz(4000),  RGOONE_OTHER_TX_MODES, 5000, 50000, RGOONE_VFO},
++        {kHz(3500),  kHz(4000),  RGOONE_AM_TX_MODES, 5000, 12500, RGOONE_VFO},
++        {kHz(7000),  kHz(7300),  RGOONE_OTHER_TX_MODES, 5000, 50000, RGOONE_VFO},
++        {kHz(7000),  kHz(7300),  RGOONE_AM_TX_MODES, 5000, 12500, RGOONE_VFO},
++        {kHz(10100), kHz(10150), RGOONE_OTHER_TX_MODES, 5000, 50000, RGOONE_VFO},
++        {kHz(10100), kHz(10150), RGOONE_AM_TX_MODES, 5000, 12500, RGOONE_VFO},
++        {kHz(14000), kHz(14350), RGOONE_OTHER_TX_MODES, 5000, 50000, RGOONE_VFO},
++        {kHz(14000), kHz(14350), RGOONE_AM_TX_MODES, 5000, 12500, RGOONE_VFO},
++        {kHz(18068), kHz(18168), RGOONE_OTHER_TX_MODES, 5000, 50000, RGOONE_VFO},
++        {kHz(18068), kHz(18168), RGOONE_AM_TX_MODES, 5000, 12500, RGOONE_VFO},
++        {kHz(21000), kHz(21450), RGOONE_OTHER_TX_MODES, 5000, 50000, RGOONE_VFO},
++        {kHz(21000), kHz(21450), RGOONE_AM_TX_MODES, 5000, 12500, RGOONE_VFO},
++        {kHz(24890), kHz(24990), RGOONE_OTHER_TX_MODES, 5000, 50000, RGOONE_VFO},
++        {kHz(24890), kHz(24990), RGOONE_AM_TX_MODES, 5000, 12500, RGOONE_VFO},
++        {kHz(28000), kHz(29700), RGOONE_OTHER_TX_MODES, 5000, 50000, RGOONE_VFO},
++        {kHz(28000), kHz(29700), RGOONE_AM_TX_MODES, 5000, 12500, RGOONE_VFO},
++        RIG_FRNG_END,
++    },
++    .tuning_steps =  {
++        {RGOONE_ALL_MODES, 1},
++        {RGOONE_ALL_MODES, 10},
++        {RGOONE_ALL_MODES, 100},
++        {RGOONE_ALL_MODES, kHz(1)},
++        RIG_TS_END,
++    },
++    /* mode/filter list, remember: order matters! */
++    .filters =  {
++        {RIG_MODE_SSB, kHz(2.7)},
++        {RIG_MODE_CW | RIG_MODE_CWR, Hz(200)},
++        {RIG_MODE_CW | RIG_MODE_CWR, kHz(2.2)},
++        {RIG_MODE_AM, kHz(6)},
++        {RIG_MODE_FM, kHz(12)},
++        {RIG_MODE_RTTY, Hz(500)},
++        RIG_FLT_END,
++    },
++    .vfo_ops = RGOONE_VFO_OPS,
++    .level_gran =
++    {
++#define NO_LVL_KEYSPD
++#define NO_LVL_BKIN_DLYMS
++#define NO_LVL_RFPOWER
++#define NO_LVL_VOXGAIN
++#define NO_LVL_COMP
++#define NO_LVL_VOXDELAY
++#include "level_gran_kenwood.h"
++#undef NO_LVL_KEYSPD
++#undef NO_LVL_BKIN_DLYMS
++#undef NO_LVL_RFPOWER
++#undef NO_LVL_VOXGAIN
++#undef NO_LVL_COMP
++#undef NO_LVL_VOXDELAY
++        /* RGO KS: 005-045 WPM */
++        [LVL_KEYSPD] = {.min = {.i = 5}, .max = {.i = 45}, .step = {.i = 1}},
++        /* RGO SD: 0000-1200 ms */
++        [LVL_BKIN_DLYMS] = {.min = {.i = 0}, .max = {.i = 1200}, .step = {.i = 1}},
++        /* RGO PC: 000-050 (0-50W) */
++        [LVL_RFPOWER] = {.min = {.f = 0}, .max = {.f = 1}, .step = {.f = 1.0f / 50.0f}},
++        /* RGO VG: 000-010 (000=VOX off) */
++        [LVL_VOXGAIN] = {.min = {.f = 0}, .max = {.f = 1}, .step = {.f = 1.0f / 10.0f}},
++        /* RGO PL: 000-010 */
++        [LVL_COMP] = {.min = {.f = 0}, .max = {.f = 1}, .step = {.f = 1.0f / 10.0f}},
++        /* RGO VD: 0000-1200 ms (val.i in 100ms-Einheiten: 0-12) */
++        [LVL_VOXDELAY] = {.min = {.i = 0}, .max = {.i = 12}, .step = {.i = 1}},
++    },
++    .str_cal = RGOONE_STR_CAL,
++    .swr_cal = RGOONE_SWR_CAL,
++
++    .priv = (void *)& rgo_one_priv_caps,
++    .rig_init = rgo_one_init,
++    .rig_open = rgo_one_open,
++    .rig_cleanup = kenwood_cleanup,
++    .set_freq = kenwood_set_freq,
++    .get_freq = kenwood_get_freq,
++    .set_rit = rgo_one_set_rit,
++    .get_rit = rgo_one_get_rit,
++    .set_xit = rgo_one_set_rit,
++    .get_xit = rgo_one_get_rit,
++    .set_mode = rgo_one_set_mode,
++    .get_mode = kenwood_get_mode,
++    .set_vfo = kenwood_set_vfo,
++    .get_vfo = kenwood_get_vfo_if,
++    .set_split_vfo = kenwood_set_split_vfo,
++    .get_split_vfo = kenwood_get_split_vfo_if,
++    .get_ptt = kenwood_get_ptt,
++    .set_ptt = rgo_one_set_ptt,
++#if defined(WIN32)
++    .post_set_rts = rgo_one_post_set_rts,
++#endif
++    /* .get_dcd removed: BY command not in RGO CAT manual */
++    .get_info = rgo_one_get_info,
++    .set_mem = rgo_one_set_mem,
++    .get_mem = rgo_one_get_mem,
++    .get_channel    = rgo_one_get_channel,
++    .set_channel    = rgo_one_set_channel,
++    .delete_channel = rgo_one_delete_channel,
++    .reset = kenwood_reset,
++    .has_set_level = RGOONE_LEVEL_SET,
++    .has_get_level = RGOONE_LEVEL_GET,
++    .set_level = rgo_one_set_level,
++    .get_level = rgo_one_get_level,
++    .has_get_func = RGOONE_FUNC_ALL,
++    .has_set_func = RGOONE_FUNC_ALL,
++    .set_func = rgo_one_set_func,
++    .get_func = rgo_one_get_func,
++    .send_morse = rgo_one_send_morse,
++    .wait_morse = rig_wait_morse,
++    .send_voice_mem = rgo_one_send_voice_mem,
++    .stop_voice_mem = rgo_one_stop_voice_mem,
++    .vfo_op = rgo_one_vfo_op,
++    .hamlib_check_rig_caps = HAMLIB_CHECK_RIG_CAPS
++};
++
++extern struct rig_caps rgo_one_v1v5_caps;
++
++/*
++ * initrigs_rgo is called by rig_backend_load
++ */
++DECLARE_INITRIG_BACKEND(rgo)
++{
++    rig_debug(RIG_DEBUG_VERBOSE, "%s: _init called\n", __func__);
++    rig_register(&rgo_one_caps);
++    rig_register(&rgo_one_v1v5_caps);
++    return RIG_OK;
++}
+diff --git a/src/register.c b/src/register.c
+index dd9ccfab1..db942a098 100644
+--- a/src/register.c
++++ b/src/register.c
+@@ -93,6 +93,7 @@ DEFINE_INITRIG_BACKEND(motorola);
+ DEFINE_INITRIG_BACKEND(commradio);
+ DEFINE_INITRIG_BACKEND(simplecat);
+ DEFINE_INITRIG_BACKEND(harris);
++DEFINE_INITRIG_BACKEND(rgo);
+ //! @endcond
+ 
+ #ifdef HAVE_WINRADIO
+@@ -158,6 +159,7 @@ static struct
+     { RIG_COMMRADIO, RIG_BACKEND_COMMRADIO, RIG_FUNCNAMA(commradio) },
+     { RIG_SIMPLECAT, RIG_BACKEND_SIMPLECAT, RIG_FUNCNAMA(simplecat) },
+     { RIG_HARRIS, RIG_BACKEND_HARRIS, RIG_FUNCNAMA(harris) },
++    { RIG_RGO, RIG_BACKEND_RGO, RIG_FUNCNAMA(rgo) },
+     { 0, NULL }, /* end */
+ };
+ 
+diff --git a/src/rig.c b/src/rig.c
+index 569c416fb..cb0361743 100644
+--- a/src/rig.c
++++ b/src/rig.c
+@@ -3877,6 +3877,9 @@ int HAMLIB_API rig_set_ptt(RIG *rig, vfo_t vfo, ptt_t ptt)
+ 
+         retcode = ser_set_rts(pttp, ptt != RIG_PTT_OFF);
+ 
++        if (retcode == RIG_OK && caps->post_set_rts)
++            caps->post_set_rts(rig, pttp, ptt != RIG_PTT_OFF);
++
+         rig_debug(RIG_DEBUG_TRACE, "%s:  rigport=%s, pttport=%s, ptt_share=%d\n",
+                   __func__, rp->pathname, pttp->pathname, rs->ptt_share);
+ 
