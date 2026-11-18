@@ -1,7 +1,7 @@
 # RGO ONE SPE CAT Server — Project Handover
 *For continuation in a new Claude session*
 
-**Created:** 2026-11-14 · **Last updated:** 2026-11-17 · **Type:** ESP firmware (ESP32-S3 N16R8)
+**Created:** 2026-11-14 · **Last updated:** 2026-11-18 · **Type:** ESP firmware (ESP32-S3 N16R8)
 
 ---
 
@@ -314,7 +314,8 @@ radio → SPE path doesn't need Wi-Fi.
   (2026-11-15). `TX2` and the usbser.sys RTS workaround belong to the V6
   backend only. Windows-only DLLs, no use on the Mac (the S3 emulates a
   TS-480 anyway). Its screenshots show 57600 baud for V1-V5; ours answers
-  only at 19200. Keep RTS PTT.
+  only at 19200. Keep RTS PTT. Reference copy of his README and
+  screenshots (no binaries): `docs/hamlib-dj4wd/`.
 - Opening the radio's FTDI port from a Mac can briefly raise DTR/RTS. The
   firmware forces both low right after enumeration; on the Mac, check the
   radio's DTR/RTS PTT/key setting before probing.
@@ -329,6 +330,9 @@ radio → SPE path doesn't need Wi-Fi.
   `docs/BOX_PLAN.md`, `enclosure/README.md`, `rgo_box.scad` comments and
   both `docs/writeups/` pages;
   no geometry change (the 6.2 mm hole already fits the jack).
+
+- **2026-11-18** — Copied DJ4WD's Hamlib README and WSJT-X screenshots
+  to `docs/hamlib-dj4wd/` for reference (Windows binaries left out, ~60 MB).
 
 - **2026-11-17** — Checked DJ4WD's patched Hamlib bundle for the RGO ONE
   (claims working CAT PTT). Its V1-V5 PTT is plain `TX0;`/`RX;`, already
