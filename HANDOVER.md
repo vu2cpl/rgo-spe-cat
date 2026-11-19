@@ -252,9 +252,10 @@ radio → SPE path doesn't need Wi-Fi.
   recorded" fields.
 - [ ] Optional: TCI server with audio over Wi-Fi, replacing the USB audio
   cable. Hardware plan in `docs/TCI_PLAN.md`. First step: measure the
-  LINE OUT voltage. Board chosen: Waveshare WM8960 Audio Board (Robu.in
-  or AliExpress 1005012787457523). On arrival: remove R1, find the jack's
-  mic contact, fit a splitter or rewire the cable to a 4-pole plug.
+  LINE OUT voltage. Board chosen: WM8960 Audio Board, Waveshare layout;
+  **2 ordered 2026-11-19** from AliExpress diymore (33034299768, SGD
+  11.13); Integrated Solution store and Robu.in are the fallbacks. On arrival: remove
+  R1 and wire two new panel jacks direct to the board (no splitter).
 - [ ] Optional: small status web page (deferred; MQTT + LED cover it for now)
 
 ## Next steps
@@ -342,6 +343,12 @@ radio → SPE path doesn't need Wi-Fi.
   store Integrated Solution. From the schematic, it has one 4-pole
   headset jack, so the cable needs a splitter or a rewire. The fixed
   2.2 kΩ mic bias (R1) should be removed. Details in `docs/TCI_PLAN.md`.
+  Later the same day: diymore's copy of the same layout became the first
+  choice (SGD 11.13, its own photos, 209 sold); Manoj ordered 2. The splitter was
+  dropped: two panel-mount 3.5 mm jacks on the box wire direct to the
+  board. IN goes to jack pin 1 (after removing R1), OUT to pin 2
+  (HEADPHONE_L), and ground to the header GND. The ACC1 cable is
+  unchanged.
 
 - **2026-11-17** — Docs corrected: the AMP panel jack is a **1/8" (3.5 mm)**
   stereo jack, the same size as the IN/OUT audio jacks, and the amp cable

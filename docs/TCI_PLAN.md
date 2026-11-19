@@ -1,7 +1,8 @@
 # TCI audio over Wi-Fi: hardware plan
 
-**Status: plan only (2026-11-19).** Board chosen (Waveshare WM8960 Audio
-Board, see below); nothing bought, wired or written yet.
+**Status: plan only (2026-11-19).** Board chosen (WM8960 Audio Board,
+Waveshare layout). **2 boards ordered 2026-11-19 from the diymore listing.**
+Nothing wired or written yet.
 
 ## Goal
 
@@ -36,7 +37,7 @@ Improved and MSHV have TCI in some versions; check against the builds in use.
 | TX output | Mono is enough, AC-coupled | Feeds LINE IN+; LINE IN− stays tied to ground |
 | Power | 3.3 V (or 5 V with onboard regulator), under 100 mA | From the box's USB charger via the S3 board |
 | Size | About 40 × 40 mm or less | Must fit the 101 × 79 mm box; the dongle-A cradle needs re-cutting |
-| Connections | 3.5 mm jacks, or pads | The ACC1 cable ends in 3.5 mm plugs; jacks let it plug in unchanged |
+| Connections | Pads or jacks; the box's panel jacks wire to the board | The ACC1 cable ends in 3.5 mm plugs, so panel jacks let it plug in unchanged |
 
 **Preferred chip: WM8960.** Input PGA up to +30 dB plus up to +29 dB boost,
 a headphone driver that handles 600 Ω easily, and switchable mic bias.
@@ -44,20 +45,29 @@ a headphone driver that handles 600 Ω easily, and switchable mic bias.
 **Avoid PCM1808 + PCM5102A.** No input gain, and the PCM5102A is not
 specified for 600 Ω loads; it would also need an extra preamp and buffer.
 
-### Chosen board: Waveshare WM8960 Audio Board (2026-11-19)
+### Chosen board: WM8960 Audio Board, Waveshare layout (2026-11-19)
 
 Checked against Waveshare's [wiki](https://www.waveshare.com/wiki/WM8960_Audio_Board),
-schematic, manual and dimension drawing. Not bought yet.
+schematic, manual and dimension drawing. **Ordered: 2 from diymore,
+2026-11-19.**
 
-**Sources (same board, same specs):**
+**Sources (same layout and specs). Buy two:** R1 comes off, and maybe the
+jack, so a spare is useful.
 
-| Source | Price (2026-11-19) | Notes |
-|---|---|---|
-| [Robu.in](https://robu.in/product/waveshare-wm8960-stereo-codec-audio-module-playrecord/) | ₹1,979 incl. GST | Out of stock on 2026-11-19. Brand Waveshare, 1-year warranty, Indian seller |
-| [AliExpress, Integrated Solution Company Limited Store](https://www.aliexpress.com/item/1005012787457523.html) | SGD 20.20 (about ₹1,428) | Photo shows the Waveshare logo on the back, so likely genuine. Store rated 4.6 |
+| Choice | Source | Price (2026-11-19) | Notes |
+|---|---|---|---|
+| **1st** | [AliExpress, diymore Alice1101983 Store](https://www.aliexpress.com/item/33034299768.html) | **SGD 11.13** (about ₹787) | diymore's own photos of a real board: same layout and silkscreen as Waveshare's ("WM8960 Audio Board", same header labels), but no Waveshare logo, so a copy. Item 4.4 stars, 11 reviews, 209 sold. Store 96.2 % positive, 16.5K followers |
+| 2nd | [AliExpress, Integrated Solution Company Limited Store](https://www.aliexpress.com/item/1005012787457523.html) | SGD 20.20 (about ₹1,428) | Waveshare logo in the photo, so likely genuine. Store rated 4.6 |
+| 3rd | [Robu.in](https://robu.in/product/waveshare-wm8960-stereo-codec-audio-module-playrecord/) | ₹1,979 incl. GST | Genuine Waveshare, 1-year warranty, Indian seller. Out of stock on 2026-11-19 |
 
-Avoid the cheaper AliExpress listing 1005008591238771 (Senlltop Store,
-1 review). It only reuses Waveshare's photos and may be a copy.
+A copy is fine here: the board is wired direct (below), so its jack wiring
+does not matter, and R1 / C4 / C5 / the jack pins get checked with a meter
+on arrival anyway. Skip AliExpress 1005008591238771 (Senlltop Store, SGD
+14.60, 1 review, Waveshare's photos only): diymore is cheaper and shows its
+own board.
+
+Not suitable: the ReSpeaker 2-Mic Pi HAT V1.0 (WM8960 too, but its only
+inputs are the two onboard mics; no RX input).
 
 **Specs:** WM8960, 3.3 V, I2C control, I2S audio, 8–48 kHz. SNR: DAC
 98 dB, ADC 94 dB. Headphone output 40 mW into 16 Ω, speaker output 1 W per
@@ -77,22 +87,42 @@ header pins at one end and the jack lip.
 
 **Changes needed (from the schematic):**
 
-1. **One 4-pole headset jack.** Headphone L/R (pins 2/3) and the mic
-   contact (pin 1) share one jack, but the ACC1 cable ends in two separate
-   3.5 mm plugs. Use a headset-to-mic/headphone splitter, or rewire the
-   cable to one 4-pole plug. The jack standard (CTIA or OMTP) is not
-   documented. Before buying a splitter, power the board with R1 still
-   fitted and find the mic contact with a meter: it reads about 3.3 V
-   through 2.2 kΩ.
-2. **Fixed mic bias.** The jack's mic contact goes to RINPUT1 through C4
+1. **Wire direct; don't use the board's jack.** The board has one 4-pole
+   headset jack (PJ-342) with mic in and headphone out on it, but the ACC1
+   cable ends in two separate 3.5 mm plugs. Instead of a splitter, fit
+   **two panel-mount 3.5 mm stereo jacks (IN and OUT)** on the box, the
+   same size as the AMP jack, and wire them to the board. The ACC1 cable
+   then plugs in unchanged, and there is no CTIA/OMTP question.
+
+   | Box panel jack | Board point | Notes |
+   |---|---|---|
+   | IN tip (RX, from LINE OUT) | Jack U1 **pin 1** pad (mic contact → C4 1 µF → RINPUT1) | Remove R1 first |
+   | OUT tip (TX, to LINE IN+) | Jack U1 **pin 2** pad (HEADPHONE_L, after C5 100 µF) | Left channel only; firmware sends TX on L |
+   | Both sleeves | **GND pin on the 2×8 header** | Not a jack pad: the schematic does not clearly show the jack's ground (pin 4 goes through 10 kΩ to the jack-detect input) |
+
+   Either leave U1 fitted and solder to its legs (or to the C4 / C5 pads),
+   or remove it with hot air or flux and wick (saves about 6 mm of height
+   and takes its switch contacts out of the path; watch the pads, it has
+   plastic pegs and five SMD legs). Then the only connector left on the
+   board is the 2×8 header.
+2. **Fixed mic bias.** The mic contact goes to RINPUT1 through C4
    (1 µF), with **R1 (2.2 kΩ) pulled up to 3.3 V**. This bias can't be
    switched off in software. The radio's C26 (1 µF) blocks the DC, as
    with the CM108 today, but R1 also loads LINE OUT (620 Ω source) and
-   costs about 2 dB. **Remove R1.**
+   costs about 2 dB. **Remove R1.** On a copy board, confirm R1 with a
+   meter first: the resistor between the jack's pin 1 and 3.3 V.
 3. **Size.** 58 × 24 mm is over the 40 × 40 mm target, but it should fit
-   the 101 × 79 mm box. The dongle-A cradle needs redesigning.
+   the 101 × 79 mm box. The dongle-A cradle needs redesigning, and the
+   panel needs two jack holes where the dongle's jacks showed through.
 4. **Onboard MEMS mic** is on LINPUT1. The firmware leaves it off and uses
-   only RINPUT1 for RX. TX audio goes out on HP_L (tip). LINE IN is mono.
+   only RINPUT1 for RX. LINE IN is mono.
+
+**Parts list:** 2 × WM8960 board, 2 × panel-mount 3.5 mm stereo jacks,
+short screened wire. No splitter.
+
+**On arrival:** check R1, C4, C5 and jack pins 1 and 2 against the schematic
+with a meter; remove R1; check that I2C answers and the audio is clean on
+the bench; measure the radio's LINE OUT voltage.
 
 ## 2. S3 pins (I2S 5 + I2C 2)
 
@@ -102,7 +132,7 @@ octal PSRAM on N16R8), 48 (RGB LED).
 
 | Signal | GPIO |
 |---|---|
-| MCLK | 4 (not needed with the Waveshare board: onboard 24 MHz clock) |
+| MCLK | 4 (not needed with the WM8960 board: onboard 24 MHz clock) |
 | BCLK | 5 |
 | WS (LRCLK) | 6 |
 | DOUT → codec DAC | 7 |
