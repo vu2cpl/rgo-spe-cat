@@ -1,7 +1,7 @@
 # RGO ONE SPE CAT Server — Project Handover
 *For continuation in a new Claude session*
 
-**Created:** 2026-11-14 · **Last updated:** 2026-11-18 · **Type:** ESP firmware (ESP32-S3 N16R8)
+**Created:** 2026-11-14 · **Last updated:** 2026-11-19 · **Type:** ESP firmware (ESP32-S3 N16R8)
 
 ---
 
@@ -78,7 +78,8 @@ the amp so the SPE follows band changes automatically.
   (Hamlib / WSJT-X).
 - **Optional:** MQTT publishing of frequency, band and TX state to the shack's
   Node-RED.
-- **Out of scope:** TCI, audio, IQ and panadapter. Any IF-out panadapter work
+- **Out of scope:** IQ and panadapter. TCI with audio over Wi-Fi is a
+  later option, planned in `docs/TCI_PLAN.md` but not built. Any IF-out panadapter work
   is a separate SDR box, not this ESP32.
 
 ## Decisions
@@ -92,9 +93,9 @@ the amp so the SPE follows band changes automatically.
 | Platform | pioarduino 55.03.311 (Arduino-ESP32 3.3.11, IDF 5.5) | Ships `usb/usb_host.h` + `libusb.a` |
 | SPE connection | Direct TTL from an ESP32 UART, no MAX3232 | The SPE accepts TTL-level CAT |
 | Protocol to SPE | Kenwood emulation (`FA;`, `IF;`) | Common format the SPE understands |
-| TCI | Dropped | No IQ or audio from the RGO ONE, and the SPE and WSJT-X don't use it |
+| TCI | Dropped for v1; revisited as a plan 2026-11-19 (`docs/TCI_PLAN.md`) | The RGO ONE has no TCI of its own, but the S3 could serve it with an I2S codec. Mainline WSJT-X has no TCI |
 | Bluetooth serial | Dropped | The S3 has BLE only, so no SPP COM port; macOS SPP is unreliable anyway |
-| Audio over network | Dropped | Would need I2S ADC/DAC and Wi-Fi buffering; out of scope |
+| Audio over network | Planned, not started (`docs/TCI_PLAN.md`) | Needs an I2S codec (WM8960 preferred) in place of the C-Media dongle |
 
 ## Radio — measured facts (2026-11-14, radio on the Mac)
 
@@ -249,6 +250,9 @@ radio → SPE path doesn't need Wi-Fi.
   If it replaces dongle A, see `docs/SOUND_CARD.md` (reselect by name, Mac
   levels to max, remeasure, check fit). Plug A in to fill its "not
   recorded" fields.
+- [ ] Optional: TCI server with audio over Wi-Fi, replacing the USB audio
+  cable. Hardware plan in `docs/TCI_PLAN.md`. First step: measure the
+  LINE OUT voltage, then pick the codec (WM8960 preferred).
 - [ ] Optional: small status web page (deferred; MQTT + LED cover it for now)
 
 ## Next steps
@@ -322,6 +326,15 @@ radio → SPE path doesn't need Wi-Fi.
   radio's DTR/RTS PTT/key setting before probing.
 
 ## What changed
+
+- **2026-11-19** — Added `docs/TCI_PLAN.md`: hardware requirement for a
+  TCI server on the S3 with audio over Wi-Fi, so the USB audio cable to the
+  PC can go. An I2S codec replaces the C-Media dongle. It needs at least
+  +30 dB RX input gain, because LINE OUT is near mic level, and must drive
+  600 Ω into LINE IN with headroom. WM8960 is preferred, ES8388 is the
+  alternative, and PCM1808/PCM5102A should be avoided. Suggested pins:
+  GPIO 4/5/6/7/15 for I2S and 8/9 for I2C. Plan only; nothing built.
+  Mainline WSJT-X has no TCI; JTDX does.
 
 - **2026-11-17** — Docs corrected: the AMP panel jack is a **1/8" (3.5 mm)**
   stereo jack, the same size as the IN/OUT audio jacks, and the amp cable
