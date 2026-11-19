@@ -1,6 +1,7 @@
 # TCI audio over Wi-Fi: hardware plan
 
-**Status: plan only (2026-11-19).** Nothing bought, wired or written yet.
+**Status: plan only (2026-11-19).** Board chosen (Waveshare WM8960 Audio
+Board, see below); nothing bought, wired or written yet.
 
 ## Goal
 
@@ -43,6 +44,56 @@ a headphone driver that handles 600 Ω easily, and switchable mic bias.
 **Avoid PCM1808 + PCM5102A.** No input gain, and the PCM5102A is not
 specified for 600 Ω loads; it would also need an extra preamp and buffer.
 
+### Chosen board: Waveshare WM8960 Audio Board (2026-11-19)
+
+Checked against Waveshare's [wiki](https://www.waveshare.com/wiki/WM8960_Audio_Board),
+schematic, manual and dimension drawing. Not bought yet.
+
+**Sources (same board, same specs):**
+
+| Source | Price (2026-11-19) | Notes |
+|---|---|---|
+| [Robu.in](https://robu.in/product/waveshare-wm8960-stereo-codec-audio-module-playrecord/) | ₹1,979 incl. GST | Out of stock on 2026-11-19. Brand Waveshare, 1-year warranty, Indian seller |
+| [AliExpress, Integrated Solution Company Limited Store](https://www.aliexpress.com/item/1005012787457523.html) | SGD 20.20 (about ₹1,428) | Photo shows the Waveshare logo on the back, so likely genuine. Store rated 4.6 |
+
+Avoid the cheaper AliExpress listing 1005008591238771 (Senlltop Store,
+1 review). It only reuses Waveshare's photos and may be a copy.
+
+**Specs:** WM8960, 3.3 V, I2C control, I2S audio, 8–48 kHz. SNR: DAC
+98 dB, ADC 94 dB. Headphone output 40 mW into 16 Ω, speaker output 1 W per
+channel into 8 Ω (BTL). Onboard MEMS mic, 4-pole 3.5 mm headset jack
+(PJ-342), 2×8 header at 2.54 mm. Size **58 × 24 mm**, plus the right-angle
+header pins at one end and the jack lip.
+
+**How it meets the requirement:**
+
+- **RX gain:** PGA up to +30 dB, plus boost up to +29 dB. Passes.
+- **TX drive:** the headphone driver goes through 100 µF caps (C5/C6),
+  about 1 V RMS full scale, and drives 600 Ω easily. Passes.
+- **MCLK:** onboard 24 MHz oscillator, and the codec PLL makes 48 kHz from
+  it. The S3 does not need an MCLK pin, so GPIO 4 stays free. Header P1
+  selects which header pin carries MCLK; leave the S3 side unconnected.
+  The codec runs as I2S master, so its clock paces the audio.
+
+**Changes needed (from the schematic):**
+
+1. **One 4-pole headset jack.** Headphone L/R (pins 2/3) and the mic
+   contact (pin 1) share one jack, but the ACC1 cable ends in two separate
+   3.5 mm plugs. Use a headset-to-mic/headphone splitter, or rewire the
+   cable to one 4-pole plug. The jack standard (CTIA or OMTP) is not
+   documented. Before buying a splitter, power the board with R1 still
+   fitted and find the mic contact with a meter: it reads about 3.3 V
+   through 2.2 kΩ.
+2. **Fixed mic bias.** The jack's mic contact goes to RINPUT1 through C4
+   (1 µF), with **R1 (2.2 kΩ) pulled up to 3.3 V**. This bias can't be
+   switched off in software. The radio's C26 (1 µF) blocks the DC, as
+   with the CM108 today, but R1 also loads LINE OUT (620 Ω source) and
+   costs about 2 dB. **Remove R1.**
+3. **Size.** 58 × 24 mm is over the 40 × 40 mm target, but it should fit
+   the 101 × 79 mm box. The dongle-A cradle needs redesigning.
+4. **Onboard MEMS mic** is on LINPUT1. The firmware leaves it off and uses
+   only RINPUT1 for RX. TX audio goes out on HP_L (tip). LINE IN is mono.
+
 ## 2. S3 pins (I2S 5 + I2C 2)
 
 **Pins that are already taken or unsafe:** 17/18 (SPE), 19/20 (USB host to
@@ -51,7 +102,7 @@ octal PSRAM on N16R8), 48 (RGB LED).
 
 | Signal | GPIO |
 |---|---|
-| MCLK | 4 |
+| MCLK | 4 (not needed with the Waveshare board: onboard 24 MHz clock) |
 | BCLK | 5 |
 | WS (LRCLK) | 6 |
 | DOUT → codec DAC | 7 |

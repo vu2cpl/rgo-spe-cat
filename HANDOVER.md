@@ -252,7 +252,9 @@ radio → SPE path doesn't need Wi-Fi.
   recorded" fields.
 - [ ] Optional: TCI server with audio over Wi-Fi, replacing the USB audio
   cable. Hardware plan in `docs/TCI_PLAN.md`. First step: measure the
-  LINE OUT voltage, then pick the codec (WM8960 preferred).
+  LINE OUT voltage. Board chosen: Waveshare WM8960 Audio Board (Robu.in
+  or AliExpress 1005012787457523). On arrival: remove R1, find the jack's
+  mic contact, fit a splitter or rewire the cable to a 4-pole plug.
 - [ ] Optional: small status web page (deferred; MQTT + LED cover it for now)
 
 ## Next steps
@@ -335,6 +337,11 @@ radio → SPE path doesn't need Wi-Fi.
   alternative, and PCM1808/PCM5102A should be avoided. Suggested pins:
   GPIO 4/5/6/7/15 for I2S and 8/9 for I2C. Plan only; nothing built.
   Mainline WSJT-X has no TCI; JTDX does.
+  Board chosen the same day: **Waveshare WM8960 Audio Board** (58 × 24 mm,
+  onboard 24 MHz clock), sources Robu.in (out of stock) and AliExpress
+  store Integrated Solution. From the schematic, it has one 4-pole
+  headset jack, so the cable needs a splitter or a rewire. The fixed
+  2.2 kΩ mic bias (R1) should be removed. Details in `docs/TCI_PLAN.md`.
 
 - **2026-11-17** — Docs corrected: the AMP panel jack is a **1/8" (3.5 mm)**
   stereo jack, the same size as the IN/OUT audio jacks, and the amp cable
